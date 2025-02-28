@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Price Display App</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Custom styles */
+    .item-card {
+      transition: transform 0.2s;
+    }
+    .item-card:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold text-center mb-8">Price Display App</h1>
+
+    <!-- Item Display Section -->
+    <div id="item-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <!-- Items will be dynamically added here -->
+    </div>
+
+    <!-- Admin Panel Section -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-2xl font-bold mb-4">Admin Panel</h2>
+      <form id="item-form" class="space-y-4">
+        <input type="text" id="item-name" placeholder="Item Name" class="w-full p-2 border rounded">
+        <input type="number" id="item-price" placeholder="Price (MVR)" class="w-full p-2 border rounded">
+        <select id="item-type" class="w-full p-2 border rounded">
+          <option value="weight">Price per Weight</option>
+          <option value="unit">Price per Unit</option>
+        </select>
+        <input type="text" id="item-unit" placeholder="Unit (KG, Gram, Pcs, Tray)" class="w-full p-2 border rounded">
+        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Item</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Local storage key
+    const STORAGE_KEY = 'price-display-items';
+
+    // Load items from local storage
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    // DOM elements
+    const itemList = document.getElementById('item-list');
+    const itemForm = document.getElementById('item-form');
+    const itemName = document.getElementById('item-name');
+    const itemPrice = document.getElementById('item-price');
+    const itemType = document.getElementById('item-type');
+    const itemUnit = document.getElementById('item-unit');
+
+    // Render items
+    function renderItems() {
+      itemList.innerHTML = '';
+      items.forEach((item, index) => {
+        const itemCard = document.createElement('div');
+        itemCard.className = 'item-card bg-white p-4 rounded-lg shadow-md';
+        itemCard.innerHTML = `
+          <h3 class="text-xl font-bold">${item.name}</h3>
+          <p class="text-gray-600">${item.price} MVR</p>
+          <p class="text-sm text-gray-500">Per ${item.unit}</p>
+          <button onclick="deleteItem(${index})" class="mt-2 text-red-500 hover:text-red-700">Delete</button>
+        `;
+        itemList.appendChild(itemCard);
+      });
+    }
+
+    // Add item
+    itemForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newItem = {
+        name: itemName.value,
+        price: itemPrice.value,
+        type: itemType.value,
+        unit: itemUnit.value,
+      };
+      items.push(newItem);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      renderItems();
+      itemForm.reset();
+    });
+
+    // Delete item
+    function deleteItem(index) {
+      items.splice(index, 1);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      renderItems();
+    }
+
+    // Initial render
+    renderItems();
+  </script>
+</body>
+</html>
