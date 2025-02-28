@@ -57,6 +57,9 @@
     const itemType = document.getElementById('item-type');
     const itemUnit = document.getElementById('item-unit');
 
+    // Track if admin is logged in
+    let isAdminLoggedIn = false;
+
     // Fetch items from JSONBin
     async function fetchItems() {
       try {
@@ -75,13 +78,19 @@
     async function renderItems() {
       const items = await fetchItems();
       itemList.innerHTML = '';
-      items.forEach((item) => {
+      items.forEach((item, index) => {
         const itemCard = document.createElement('div');
         itemCard.className = 'bg-white p-4 rounded-lg shadow-md';
         itemCard.innerHTML = `
           <h3 class="text-xl font-bold">${item.name}</h3>
           <p class="text-gray-600">${item.price} MVR</p>
           <p class="text-sm text-gray-500">Per ${item.unit}</p>
+          ${isAdminLoggedIn ? `
+            <div class="mt-2 space-x-2">
+              <button onclick="editItem(${index})" class="text-blue-500 hover:text-blue-700">Edit</button>
+              <button onclick="deleteItem(${index})" class="text-red-500 hover:text-red-700">Delete</button>
+            </div>
+          ` : ''}
         `;
         itemList.appendChild(itemCard);
       });
@@ -114,12 +123,69 @@
       itemForm.reset();
     });
 
+    // Edit item
+    async function editItem(index) {
+      const items = await fetchItems();
+      const item = items[index];
+
+      // Populate the form with the selected item's details
+      itemName.value = item.name;
+      itemPrice.value = item.price;
+      itemType.value = item.type;
+      itemUnit.value = item.unit;
+
+      // Update the form to handle editing
+      itemForm.onsubmit = async (e) => {
+        e.preventDefault();
+        items[index] = {
+          name: itemName.value,
+          price: itemPrice.value,
+          type: itemType.value,
+          unit: itemUnit.value,
+        };
+
+        // Update JSONBin
+        await fetch(JSONBIN_URL, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': API_KEY,
+          },
+          body: JSON.stringify({ items }),
+        });
+
+        renderItems();
+        itemForm.reset();
+        itemForm.onsubmit = null; // Reset the form handler
+      };
+    }
+
+    // Delete item
+    async function deleteItem(index) {
+      const items = await fetchItems();
+      items.splice(index, 1);
+
+      // Update JSONBin
+      await fetch(JSONBIN_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': API_KEY,
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      renderItems();
+    }
+
     // Admin login
     function loginAdmin() {
       const password = document.getElementById('admin-password').value;
       if (password === ADMIN_PASSWORD) {
+        isAdminLoggedIn = true;
         adminLogin.classList.add('hidden');
         adminPanel.classList.remove('hidden');
+        renderItems(); // Re-render items to show edit/delete buttons
       } else {
         alert('Incorrect password!');
       }
