@@ -3,33 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Price Display App</title>
+  <title>User App - Price Display</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
   <div class="container mx-auto p-4">
     <h1 class="text-3xl font-bold text-center mb-8">Price Display App</h1>
 
-    <!-- Admin Login Section -->
-    <div id="admin-login" class="bg-white p-6 rounded-lg shadow-md mb-8">
-      <h2 class="text-2xl font-bold mb-4">Admin Login</h2>
-      <input type="password" id="admin-password" placeholder="Enter Admin Password" class="w-full p-2 border rounded mb-2">
-      <button onclick="loginAdmin()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Login as Admin</button>
-    </div>
+    <!-- Order Creation Section -->
+    <div id="order-creation" class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <h2 class="text-2xl font-bold mb-4">Create Order</h2>
 
-    <!-- Admin Panel (Hidden by Default) -->
-    <div id="admin-panel" class="bg-white p-6 rounded-lg shadow-md mb-8 hidden">
-      <h2 class="text-2xl font-bold mb-4">Admin Panel</h2>
-      <form id="item-form" class="space-y-4">
-        <input type="text" id="item-name" placeholder="Item Name" class="w-full p-2 border rounded">
-        <input type="number" id="item-price" placeholder="Price (MVR)" class="w-full p-2 border rounded">
-        <select id="item-type" class="w-full p-2 border rounded">
-          <option value="weight">Price per Weight</option>
-          <option value="unit">Price per Unit</option>
-        </select>
-        <input type="text" id="item-unit" placeholder="Unit (KG, Gram, Pcs, Tray)" class="w-full p-2 border rounded">
-        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Item</button>
-      </form>
+      <!-- Customer Details -->
+      <div class="space-y-4 mb-6">
+        <input type="text" id="customer-name" placeholder="Customer Name" class="w-full p-2 border rounded">
+        <input type="text" id="customer-address" placeholder="Customer Address" class="w-full p-2 border rounded">
+        <input type="text" id="customer-mobile" placeholder="Customer Mobile Number" class="w-full p-2 border rounded">
+      </div>
+
+      <!-- Order Items -->
+      <div id="order-items" class="space-y-4">
+        <!-- Order items will be dynamically added here -->
+      </div>
+
+      <!-- Add Item Button -->
+      <div class="mt-4">
+        <button onclick="addOrderItem()" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Item</button>
+      </div>
+
+      <!-- Total Price -->
+      <div class="mt-4">
+        <p class="text-xl font-bold">Total Price: <span id="total-price">0</span> MVR</p>
+      </div>
+
+      <!-- Send Order Button -->
+      <div class="mt-4">
+        <button onclick="sendOrder()" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Send Order</button>
+      </div>
     </div>
 
     <!-- Item Display Section -->
@@ -39,35 +49,31 @@
   </div>
 
   <script>
-    // JSONBin configuration
-    const API_KEY = '$2a$10$ISnzYBxkpDNeersZBo0mVe5v/iOr89sUQyl.zGdj3v.pGlKBJLYgu'; // Replace with your JSONBin API key
-    const BIN_ID = '67c1ff6dacd3cb34a8f2a593'; // Replace with your JSONBin Bin ID
-    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-
-    // Admin password (for simplicity, use a hardcoded password)
-    const ADMIN_PASSWORD = 'admin123';
+    // Supabase configuration
+    const SUPABASE_URL = 'https://ytaguefncddqtkvlmvah.supabase.co'; // Replace with your Supabase URL
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0YWd1ZWZuY2RkcXRrdmxtdmFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjUyNzgsImV4cCI6MjA1NjYwMTI3OH0.Kn0v8yrsxAmp3beucYFZ4CfJfBfZRV6addUnNr2UDck'; // Replace with your Supabase anon key
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // DOM elements
-    const adminLogin = document.getElementById('admin-login');
-    const adminPanel = document.getElementById('admin-panel');
     const itemList = document.getElementById('item-list');
-    const itemForm = document.getElementById('item-form');
-    const itemName = document.getElementById('item-name');
-    const itemPrice = document.getElementById('item-price');
-    const itemType = document.getElementById('item-type');
-    const itemUnit = document.getElementById('item-unit');
+    const orderItems = document.getElementById('order-items');
+    const totalPriceElement = document.getElementById('total-price');
+    const customerName = document.getElementById('customer-name');
+    const customerAddress = document.getElementById('customer-address');
+    const customerMobile = document.getElementById('customer-mobile');
 
-    // Track if admin is logged in
-    let isAdminLoggedIn = false;
+    // Track order items and total price
+    let order = [];
+    let totalPrice = 0;
 
-    // Fetch items from JSONBin
+    // Fetch items from Supabase
     async function fetchItems() {
       try {
-        const response = await fetch(JSONBIN_URL, {
-          headers: { 'X-Master-Key': API_KEY },
-        });
-        const data = await response.json();
-        return data.record.items || [];
+        const { data, error } = await supabase
+          .from('items')
+          .select('*');
+        if (error) throw error;
+        return data || [];
       } catch (error) {
         console.error('Error fetching items:', error);
         return [];
@@ -78,121 +84,121 @@
     async function renderItems() {
       const items = await fetchItems();
       itemList.innerHTML = '';
-      items.forEach((item, index) => {
+      items.forEach((item) => {
         const itemCard = document.createElement('div');
         itemCard.className = 'bg-white p-4 rounded-lg shadow-md';
         itemCard.innerHTML = `
           <h3 class="text-xl font-bold">${item.name}</h3>
           <p class="text-gray-600">${item.price} MVR</p>
           <p class="text-sm text-gray-500">Per ${item.unit}</p>
-          ${isAdminLoggedIn ? `
-            <div class="mt-2 space-x-2">
-              <button onclick="editItem(${index})" class="text-blue-500 hover:text-blue-700">Edit</button>
-              <button onclick="deleteItem(${index})" class="text-red-500 hover:text-red-700">Delete</button>
-            </div>
-          ` : ''}
         `;
         itemList.appendChild(itemCard);
       });
     }
 
-    // Add/Edit item
-    itemForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const newItem = {
-        name: itemName.value,
-        price: itemPrice.value,
-        type: itemType.value,
-        unit: itemUnit.value,
-      };
-
+    // Add order item
+    async function addOrderItem() {
       const items = await fetchItems();
-      items.push(newItem);
-
-      // Update JSONBin
-      await fetch(JSONBIN_URL, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': API_KEY,
-        },
-        body: JSON.stringify({ items }),
+      const itemSelect = document.createElement('select');
+      itemSelect.className = 'w-full p-2 border rounded';
+      items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.name} - ${item.price} MVR per ${item.unit}`;
+        itemSelect.appendChild(option);
       });
 
-      renderItems();
-      itemForm.reset();
-    });
+      const quantityInput = document.createElement('input');
+      quantityInput.type = 'number';
+      quantityInput.placeholder = 'Quantity';
+      quantityInput.className = 'w-full p-2 border rounded mt-2';
 
-    // Edit item
-    async function editItem(index) {
-      const items = await fetchItems();
-      const item = items[index];
+      const orderItem = document.createElement('div');
+      orderItem.className = 'space-y-2';
+      orderItem.appendChild(itemSelect);
+      orderItem.appendChild(quantityInput);
 
-      // Populate the form with the selected item's details
-      itemName.value = item.name;
-      itemPrice.value = item.price;
-      itemType.value = item.type;
-      itemUnit.value = item.unit;
+      orderItems.appendChild(orderItem);
 
-      // Update the form to handle editing
-      itemForm.onsubmit = async (e) => {
-        e.preventDefault();
-        items[index] = {
-          name: itemName.value,
-          price: itemPrice.value,
-          type: itemType.value,
-          unit: itemUnit.value,
-        };
-
-        // Update JSONBin
-        await fetch(JSONBIN_URL, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': API_KEY,
-          },
-          body: JSON.stringify({ items }),
-        });
-
-        renderItems();
-        itemForm.reset();
-        itemForm.onsubmit = null; // Reset the form handler
-      };
+      // Update total price when quantity changes
+      quantityInput.addEventListener('input', () => {
+        updateTotalPrice();
+      });
     }
 
-    // Delete item
-    async function deleteItem(index) {
-      const items = await fetchItems();
-      items.splice(index, 1);
+    // Update total price
+    function updateTotalPrice() {
+      totalPrice = 0;
+      const orderItemElements = orderItems.querySelectorAll('div');
+      orderItemElements.forEach((orderItem) => {
+        const itemSelect = orderItem.querySelector('select');
+        const quantityInput = orderItem.querySelector('input');
+        const selectedItemId = itemSelect.value;
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const item = order.find((item) => item.id === selectedItemId);
+        if (item) {
+          totalPrice += item.price * quantity;
+        }
+      });
+      totalPriceElement.textContent = totalPrice.toFixed(2);
+    }
 
-      // Update JSONBin
-      await fetch(JSONBIN_URL, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': API_KEY,
-        },
-        body: JSON.stringify({ items }),
+    // Send order to Supabase
+    async function sendOrder() {
+      const customerNameValue = customerName.value.trim();
+      const customerAddressValue = customerAddress.value.trim();
+      const customerMobileValue = customerMobile.value.trim();
+
+      if (!customerNameValue || !customerAddressValue || !customerMobileValue) {
+        alert('Please fill in all customer details.');
+        return;
+      }
+
+      const orderDetails = [];
+      const orderItemElements = orderItems.querySelectorAll('div');
+      orderItemElements.forEach((orderItem) => {
+        const itemSelect = orderItem.querySelector('select');
+        const quantityInput = orderItem.querySelector('input');
+        const selectedItemId = itemSelect.value;
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const item = order.find((item) => item.id === selectedItemId);
+        if (item && quantity > 0) {
+          orderDetails.push({
+            item_name: item.name,
+            quantity: quantity,
+            price: item.price,
+            total_price: item.price * quantity,
+            customer_name: customerNameValue,
+            customer_address: customerAddressValue,
+            customer_mobile: customerMobileValue,
+          });
+        }
       });
 
-      renderItems();
-    }
-
-    // Admin login
-    function loginAdmin() {
-      const password = document.getElementById('admin-password').value;
-      if (password === ADMIN_PASSWORD) {
-        isAdminLoggedIn = true;
-        adminLogin.classList.add('hidden');
-        adminPanel.classList.remove('hidden');
-        renderItems(); // Re-render items to show edit/delete buttons
+      if (orderDetails.length > 0) {
+        try {
+          const { error } = await supabase
+            .from('orders')
+            .insert(orderDetails);
+          if (error) throw error;
+          alert('Order sent successfully!');
+          orderItems.innerHTML = '';
+          totalPriceElement.textContent = '0';
+          customerName.value = '';
+          customerAddress.value = '';
+          customerMobile.value = '';
+        } catch (error) {
+          console.error('Error sending order:', error);
+          alert('Error sending order.');
+        }
       } else {
-        alert('Incorrect password!');
+        alert('No items in the order.');
       }
     }
 
     // Initial render
     renderItems();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>
