@@ -1,206 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User App - Price Display</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price List</title>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
 </head>
-<body class="bg-gray-100">
-  <div class="container mx-auto p-4">
-    <h1 class="text-3xl font-bold text-center mb-8">Price Display App</h1>
+<body>
+    <h1>Item Price List</h1>
+    <ul id="item-list"></ul>
+    <h2>Order Summary</h2>
+    <div id="order-summary"></div>
+    <h3>Total: <span id="total-price">0</span></h3>
 
-    <!-- Order Creation Section -->
-    <div id="order-creation" class="bg-white p-6 rounded-lg shadow-md mb-8">
-      <h2 class="text-2xl font-bold mb-4">Create Order</h2>
+    <script>
+        // Firebase Config
+        // Firebase Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyCZjeMj1MY3caaiUZsKurYaASZIjhEt7p0",
+          authDomain: "pricelist-app-4b981.firebaseapp.com",
+          projectId: "pricelist-app-4b981",
+          storageBucket: "pricelist-app-4b981.firebasestorage.app",
+          messagingSenderId: "886492391937",
+          appId: "1:886492391937:web:b0d1822a99483beae12e00",
+          measurementId: "G-TT7WNG8V4M"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-      <!-- Customer Details -->
-      <div class="space-y-4 mb-6">
-        <input type="text" id="customer-name" placeholder="Customer Name" class="w-full p-2 border rounded">
-        <input type="text" id="customer-address" placeholder="Customer Address" class="w-full p-2 border rounded">
-        <input type="text" id="customer-mobile" placeholder="Customer Mobile Number" class="w-full p-2 border rounded">
-      </div>
+        // Fetch Items from Firestore
+        db.collection("items").onSnapshot(snapshot => {
+            let itemsList = document.getElementById("item-list");
+            itemsList.innerHTML = "";
+            snapshot.forEach(doc => {
+                let item = doc.data();
+                let listItem = document.createElement("li");
+                listItem.innerHTML = `
+                    ${item.name} - $${item.price} per ${item.unit}
+                    <input type="number" min="0" id="qty-${doc.id}" oninput="updateOrder('${doc.id}', ${item.price})">
+                `;
+                itemsList.appendChild(listItem);
+            });
+        });
 
-      <!-- Order Items -->
-      <div id="order-items" class="space-y-4">
-        <!-- Order items will be dynamically added here -->
-      </div>
-
-      <!-- Add Item Button -->
-      <div class="mt-4">
-        <button onclick="addOrderItem()" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Item</button>
-      </div>
-
-      <!-- Total Price -->
-      <div class="mt-4">
-        <p class="text-xl font-bold">Total Price: <span id="total-price">0</span> MVR</p>
-      </div>
-
-      <!-- Send Order Button -->
-      <div class="mt-4">
-        <button onclick="sendOrder()" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Send Order</button>
-      </div>
-    </div>
-
-    <!-- Item Display Section -->
-    <div id="item-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Items will be dynamically added here -->
-    </div>
-  </div>
-
-  <!-- Supabase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script>
-    // Supabase configuration
-    const SUPABASE_URL = 'https://ytaguefncddqtkvlmvah.supabase.co'; // Replace with your Supabase URL
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0YWd1ZWZuY2RkcXRrdmxtdmFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjUyNzgsImV4cCI6MjA1NjYwMTI3OH0.Kn0v8yrsxAmp3beucYFZ4CfJfBfZRV6addUnNr2UDck'; // Replace with your Supabase anon key
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // DOM elements
-    const itemList = document.getElementById('item-list');
-    const orderItems = document.getElementById('order-items');
-    const totalPriceElement = document.getElementById('total-price');
-    const customerName = document.getElementById('customer-name');
-    const customerAddress = document.getElementById('customer-address');
-    const customerMobile = document.getElementById('customer-mobile');
-
-    // Track order items and total price
-    let order = [];
-    let totalPrice = 0;
-
-    // Fetch items from Supabase
-    async function fetchItems() {
-      try {
-        const { data, error } = await supabase
-          .from('items')
-          .select('*');
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        console.error('Error fetching items:', error);
-        return [];
-      }
-    }
-
-    // Render items
-    async function renderItems() {
-      const items = await fetchItems();
-      itemList.innerHTML = '';
-      items.forEach((item) => {
-        const itemCard = document.createElement('div');
-        itemCard.className = 'bg-white p-4 rounded-lg shadow-md';
-        itemCard.innerHTML = `
-          <h3 class="text-xl font-bold">${item.name}</h3>
-          <p class="text-gray-600">${item.price} MVR</p>
-          <p class="text-sm text-gray-500">Per ${item.unit}</p>
-        `;
-        itemList.appendChild(itemCard);
-      });
-    }
-
-    // Add order item
-    async function addOrderItem() {
-      const items = await fetchItems();
-      const itemSelect = document.createElement('select');
-      itemSelect.className = 'w-full p-2 border rounded';
-      items.forEach((item) => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = `${item.name} - ${item.price} MVR per ${item.unit}`;
-        itemSelect.appendChild(option);
-      });
-
-      const quantityInput = document.createElement('input');
-      quantityInput.type = 'number';
-      quantityInput.placeholder = 'Quantity';
-      quantityInput.className = 'w-full p-2 border rounded mt-2';
-
-      const orderItem = document.createElement('div');
-      orderItem.className = 'space-y-2';
-      orderItem.appendChild(itemSelect);
-      orderItem.appendChild(quantityInput);
-
-      orderItems.appendChild(orderItem);
-
-      // Update total price when quantity changes
-      quantityInput.addEventListener('input', () => {
-        updateTotalPrice();
-      });
-    }
-
-    // Update total price
-    function updateTotalPrice() {
-      totalPrice = 0;
-      const orderItemElements = orderItems.querySelectorAll('div');
-      orderItemElements.forEach((orderItem) => {
-        const itemSelect = orderItem.querySelector('select');
-        const quantityInput = orderItem.querySelector('input');
-        const selectedItemId = itemSelect.value;
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const item = order.find((item) => item.id === selectedItemId);
-        if (item) {
-          totalPrice += item.price * quantity;
+        // Handle Order Calculation
+        let order = {};
+        function updateOrder(itemId, price) {
+            let qty = document.getElementById(`qty-${itemId}`).value;
+            order[itemId] = qty ? parseInt(qty) * price : 0;
+            let total = Object.values(order).reduce((acc, val) => acc + val, 0);
+            document.getElementById("total-price").innerText = total.toFixed(2);
         }
-      });
-      totalPriceElement.textContent = totalPrice.toFixed(2);
-    }
-
-    // Send order to Supabase
-    async function sendOrder() {
-      const customerNameValue = customerName.value.trim();
-      const customerAddressValue = customerAddress.value.trim();
-      const customerMobileValue = customerMobile.value.trim();
-
-      if (!customerNameValue || !customerAddressValue || !customerMobileValue) {
-        alert('Please fill in all customer details.');
-        return;
-      }
-
-      const orderDetails = [];
-      const orderItemElements = orderItems.querySelectorAll('div');
-      orderItemElements.forEach((orderItem) => {
-        const itemSelect = orderItem.querySelector('select');
-        const quantityInput = orderItem.querySelector('input');
-        const selectedItemId = itemSelect.value;
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const item = order.find((item) => item.id === selectedItemId);
-        if (item && quantity > 0) {
-          orderDetails.push({
-            item_name: item.name,
-            quantity: quantity,
-            price: item.price,
-            total_price: item.price * quantity,
-            customer_name: customerNameValue,
-            customer_address: customerAddressValue,
-            customer_mobile: customerMobileValue,
-          });
-        }
-      });
-
-      if (orderDetails.length > 0) {
-        try {
-          const { error } = await supabase
-            .from('orders')
-            .insert(orderDetails);
-          if (error) throw error;
-          alert('Order sent successfully!');
-          orderItems.innerHTML = '';
-          totalPriceElement.textContent = '0';
-          customerName.value = '';
-          customerAddress.value = '';
-          customerMobile.value = '';
-        } catch (error) {
-          console.error('Error sending order:', error);
-          alert('Error sending order.');
-        }
-      } else {
-        alert('No items in the order.');
-      }
-    }
-
-    // Initial render
-    renderItems();
-  </script>
+    </script>
 </body>
 </html>
