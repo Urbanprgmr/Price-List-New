@@ -3,7 +3,7 @@ const LS_PREFIX = "BudgetApp_";
 const LS_INCOMES = LS_PREFIX + "incomes";
 const LS_UTILITIES = LS_PREFIX + "utilities";
 const LS_BUDGETS = LS_PREFIX + "budgets";
-const LS_HISTORY = LS_PREFIX + "history"; 
+const LS_HISTORY = LS_PREFIX + "history"; // Unified history
 
 // Data Arrays
 let incomes = [], utilityExpenses = [], budgetCategories = [], history = [];
@@ -74,7 +74,7 @@ function updateUI() {
         ? budgetCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join("")
         : `<option disabled selected>No budgets available</option>`;
 
-    // Update Activity History
+    // Update Activity History (Now Fully Functional)
     const historyListEl = document.getElementById("history-list");
     historyListEl.innerHTML = history.length === 0
         ? "<li class='empty'>No history records yet.</li>"
@@ -92,6 +92,36 @@ function updateUI() {
     saveData();
 }
 
+// Add Income
+document.getElementById("income-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById("income-amount").value);
+    const desc = document.getElementById("income-desc").value.trim();
+
+    if (!isNaN(amount) && amount > 0) {
+        const newIncome = { id: Date.now(), type: "Income", amount, desc, timestamp: new Date().toLocaleString() };
+        incomes.push(newIncome);
+        history.push(newIncome);
+        saveData();
+        updateUI();
+    }
+});
+
+// Add Utility Expense
+document.getElementById("utility-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById("utility-amount").value);
+    const desc = document.getElementById("utility-desc").value.trim();
+
+    if (!isNaN(amount) && amount > 0) {
+        const newExpense = { id: Date.now(), type: "Utility Expense", amount, desc, timestamp: new Date().toLocaleString() };
+        utilityExpenses.push(newExpense);
+        history.push(newExpense);
+        saveData();
+        updateUI();
+    }
+});
+
 // Add Budget Category
 document.getElementById("budget-form").addEventListener("submit", function(e) {
     e.preventDefault();
@@ -101,6 +131,7 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
     if (!isNaN(value) && value > 0) {
         const newBudget = {
             id: Date.now(),
+            type: "Budget",
             name,
             allocated: value,
             spent: 0,
@@ -115,6 +146,34 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
         updateUI();
     }
 });
+
+// Add Budget Expense
+document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const budgetId = document.getElementById("expense-category").value;
+    const amount = parseFloat(document.getElementById("expense-amount").value);
+    const desc = document.getElementById("expense-desc").value.trim();
+
+    if (!isNaN(amount) && amount > 0) {
+        const budget = budgetCategories.find(b => b.id == budgetId);
+        if (budget) {
+            const newExpense = { id: Date.now(), type: "Budget Expense", amount, desc, timestamp: new Date().toLocaleString() };
+            budget.expenses.push(newExpense);
+            budget.spent += amount;
+            budget.remaining -= amount;
+            history.push({ ...newExpense, desc: `Expense in ${budget.name}: ${desc}` });
+            saveData();
+            updateUI();
+        }
+    }
+});
+
+// Delete History Entry
+function deleteHistory(id) {
+    history = history.filter(h => h.id !== id);
+    saveData();
+    updateUI();
+}
 
 // Initialize App
 loadData();
