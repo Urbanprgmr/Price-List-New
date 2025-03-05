@@ -37,13 +37,13 @@
         <form id="income-form">
           <input type="number" id="income-amount" placeholder="Amount (MVR)" step="0.01" required />
           <input type="text" id="income-desc" placeholder="Description (optional)" />
-          <button type="submit">Add Income</button>
+          <button type="submit" id="income-submit-btn">Add Income</button>
         </form>
         <h3>Add Utility Expense</h3>
         <form id="utility-form">
           <input type="number" id="utility-amount" placeholder="Amount (MVR)" step="0.01" required />
           <input type="text" id="utility-desc" placeholder="Description (optional)" />
-          <button type="submit">Add Expense</button>
+          <button type="submit" id="utility-submit-btn">Add Expense</button>
         </form>
       </div>
       
@@ -57,7 +57,7 @@
             <label><input type="radio" name="budget-type" value="percent"> % of Remaining</label>
           </div>
           <input type="number" id="budget-value" placeholder="Enter amount or %" step="0.01" required />
-          <button type="submit">Add Budget</button>
+          <button type="submit" id="budget-submit-btn">Add Budget</button>
         </form>
       </div>
     </div>
