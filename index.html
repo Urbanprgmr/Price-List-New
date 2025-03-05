@@ -1,197 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense & Budget Tracker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-        h2, h3 {
-            text-align: center;
-            color: #333;
-        }
-        input, button, select {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            background: #28a745;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #218838;
-        }
-        .section {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-left: 5px solid #007bff;
-            border-radius: 5px;
-        }
-        .section-title {
-            font-weight: bold;
-            color: #007bff;
-        }
-        .list {
-            list-style: none;
-            padding: 0;
-        }
-        .list li {
-            background: #e9ecef;
-            margin: 5px 0;
-            padding: 8px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .delete-btn, .edit-btn {
-            background: red;
-            color: white;
-            border: none;
-            padding: 5px;
-            cursor: pointer;
-        }
-        .edit-btn {
-            background: orange;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense & Budget Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="container">
+    <header class="header">
+      <h1>Expense & Budget Tracker</h1>
+      <div class="balance-container">
+        <h2>Total Balance: $<span id="totalBalance">0</span></h2>
+        <p>Incomes: $<span id="totalIncome">0</span> &nbsp; Expenses: $<span id="totalExpense">0</span></p>
+      </div>
+    </header>
 
-<div class="container">
-    <h2>Expense & Budget Tracker</h2>
+    <section class="new-transaction">
+      <h3>Add New Transaction</h3>
+      <form id="transactionForm">
+        <div class="form-group">
+          <label for="type">Type</label>
+          <select id="type" name="type">
+            <option value="" disabled selected>Select type</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="form-group" id="categoryGroup" style="display: none;">
+          <label for="category" id="categoryLabel">Category</label>
+          <select id="category" name="category">
+            <option value="" disabled selected>Select category</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Food">Food</option>
+            <option value="Rent">Rent</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="name">Description</label>
+          <input type="text" id="name" name="name" placeholder="Description" />
+        </div>
+        <div class="form-group">
+          <label for="amount">Amount (USD)</label>
+          <input type="number" id="amount" name="amount" placeholder="Amount" step="0.01" />
+        </div>
+        <button type="submit" id="submitBtn">Add Transaction</button>
+        <button type="button" id="cancelEditBtn" style="display: none;">Cancel Edit</button>
+      </form>
+    </section>
 
-    <!-- Income Section -->
-    <div class="section">
-        <div class="section-title">Income Management</div>
-        <label>Enter Income (MVR):</label>
-        <input type="number" id="incomeInput">
-        <label>Date:</label>
-        <input type="date" id="incomeDate">
-        <button onclick="addIncome()">Add Income</button>
-        <ul class="list" id="incomeList"></ul>
-        <h3>Total Income: <span id="totalIncome">0</span> MVR</h3>
-    </div>
+    <section class="transactions">
+      <h3>Transactions</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Options</th>
+          </tr>
+        </thead>
+        <tbody id="transactionBody">
+          <!-- Transactions will be dynamically added here -->
+        </tbody>
+      </table>
+    </section>
 
-    <!-- Utility Expenses -->
-    <div class="section">
-        <div class="section-title">Utility Expenses</div>
-        <label>Utility Name:</label>
-        <input type="text" id="utilityName">
-        <label>Amount (MVR):</label>
-        <input type="number" id="utilityAmount">
-        <button onclick="addUtility()">Add Utility</button>
-        <ul class="list" id="utilityList"></ul>
-        <h3>Total Utility Expenses: <span id="totalUtilities">0</span> MVR</h3>
-    </div>
-
-    <!-- Budget Allocation -->
-    <div class="section">
-        <div class="section-title">Set Budget Allocation</div>
-        <label>Saving (%):</label>
-        <input type="number" id="savingPercent">
-        <label>Life Expenses (%):</label>
-        <input type="number" id="lifePercent">
-        <label>Coffee Budget (%):</label>
-        <input type="number" id="coffeePercent">
-        <label>Extra Activities (%):</label>
-        <input type="number" id="extraPercent">
-        <button onclick="setBudgets()">Set Budgets</button>
-    </div>
-
-    <div id="budgets"></div>
-
-    <!-- Expense Section -->
-    <div class="section">
-        <div class="section-title">Add Expense</div>
-        <label>Select Budget:</label>
-        <select id="expenseCategory">
-            <option value="saving">Saving</option>
-            <option value="life">Life Expenses</option>
-            <option value="coffee">Coffee</option>
-            <option value="extra">Extra Activities</option>
-        </select>
-        <label>Expense Amount (MVR):</label>
-        <input type="number" id="expenseAmount">
-        <button onclick="addExpense()">Add Expense</button>
-    </div>
-
-    <h3>Remaining Balance: <span id="remainingBalance">0</span> MVR</h3>
-
-    <!-- Data History -->
-    <div class="section">
-        <div class="section-title">Expense History</div>
-        <ul class="list" id="expenseHistory"></ul>
-    </div>
-</div>
-
-<script>
-    let totalIncome = 0, totalUtilities = 0;
-    let remainingIncome = 0;
-    let budgets = { saving: 0, life: 0, coffee: 0, extra: 0 };
-
-    function addIncome() {
-        let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
-        let date = document.getElementById("incomeDate").value;
-        if (!date) return alert("Please select a date.");
-        totalIncome += amount;
-        document.getElementById("totalIncome").innerText = totalIncome;
-        updateBudgets();
-    }
-
-    function addUtility() {
-        let name = document.getElementById("utilityName").value;
-        let amount = parseFloat(document.getElementById("utilityAmount").value) || 0;
-        if (!name) return alert("Enter utility name.");
-        totalUtilities += amount;
-        document.getElementById("totalUtilities").innerText = totalUtilities;
-        updateBudgets();
-    }
-
-    function setBudgets() {
-        let total = totalIncome - totalUtilities;
-        budgets.saving = total * (document.getElementById("savingPercent").value / 100);
-        budgets.life = total * (document.getElementById("lifePercent").value / 100);
-        budgets.coffee = total * (document.getElementById("coffeePercent").value / 100);
-        budgets.extra = total * (document.getElementById("extraPercent").value / 100);
-        updateBudgets();
-    }
-
-    function addExpense() {
-        let category = document.getElementById("expenseCategory").value;
-        let amount = parseFloat(document.getElementById("expenseAmount").value) || 0;
-        if (amount > budgets[category]) return alert("Not enough funds in this budget.");
-        budgets[category] -= amount;
-        document.getElementById("expenseHistory").innerHTML += `<li>${category.toUpperCase()}: -${amount} MVR</li>`;
-        updateBudgets();
-    }
-
-    function updateBudgets() {
-        remainingIncome = totalIncome - totalUtilities;
-        document.getElementById("remainingBalance").innerText = remainingIncome;
-    }
-
-    document.getElementById("totalIncome").innerText = totalIncome;
-    document.getElementById("totalUtilities").innerText = totalUtilities;
-    updateBudgets();
-</script>
-
+    <section class="category-summary">
+      <h3>Budget by Category</h3>
+      <ul id="categoryList">
+        <!-- Category budgets will be dynamically added here -->
+      </ul>
+    </section>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
