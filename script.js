@@ -1,29 +1,27 @@
-// Unique localStorage keys with a distinctive prefix
+// Unique localStorage keys
 const LS_PREFIX = "BudgetApp_";
 const LS_INCOMES = LS_PREFIX + "incomes";
 const LS_UTILITIES = LS_PREFIX + "utilities";
 const LS_BUDGETS = LS_PREFIX + "budgets";
 
-// Data arrays for incomes, utility expenses, and budget categories
-let incomes = [];
-let utilityExpenses = [];
-let budgetCategories = [];
+// Data Arrays
+let incomes = [], utilityExpenses = [], budgetCategories = [];
 
-// Load data from localStorage
+// Load Data
 function loadData() {
     incomes = JSON.parse(localStorage.getItem(LS_INCOMES)) || [];
     utilityExpenses = JSON.parse(localStorage.getItem(LS_UTILITIES)) || [];
     budgetCategories = JSON.parse(localStorage.getItem(LS_BUDGETS)) || [];
 }
 
-// Save data to localStorage
+// Save Data
 function saveData() {
     localStorage.setItem(LS_INCOMES, JSON.stringify(incomes));
     localStorage.setItem(LS_UTILITIES, JSON.stringify(utilityExpenses));
     localStorage.setItem(LS_BUDGETS, JSON.stringify(budgetCategories));
 }
 
-// Recalculate totals
+// Recalculate Totals
 function recalculateTotals() {
     const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
     const totalUtility = utilityExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -49,8 +47,7 @@ function updateUI() {
         <li>
             ${inc.desc ? inc.desc + " - " : ""}MVR ${inc.amount.toFixed(2)} 
             (Added: ${inc.timestamp})
-            <button onclick="editIncome(${inc.id})">Edit</button>
-            <button onclick="deleteIncome(${inc.id})">Delete</button>
+            <button class="small-btn" onclick="deleteIncome(${inc.id})">🗑</button>
         </li>
     `).join("");
 
@@ -60,19 +57,23 @@ function updateUI() {
         <li>
             ${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)} 
             (Added: ${exp.timestamp})
-            <button onclick="editUtility(${exp.id})">Edit</button>
-            <button onclick="deleteUtility(${exp.id})">Delete</button>
+            <button class="small-btn" onclick="deleteUtility(${exp.id})">🗑</button>
         </li>
     `).join("");
 
-    // Update budget categories
+    // Update budget categories list
     const budgetsListEl = document.getElementById("budgets-list");
     budgetsListEl.innerHTML = budgetCategories.map(cat => `
         <li>
             ${cat.name} - Allocated: MVR ${cat.allocated.toFixed(2)}, Spent: MVR ${cat.spent.toFixed(2)}, Remaining: MVR ${cat.remaining.toFixed(2)}
-            <button onclick="editBudget(${cat.id})">Edit</button>
-            <button onclick="deleteBudget(${cat.id})">Delete</button>
+            <button class="small-btn" onclick="deleteBudget(${cat.id})">🗑</button>
         </li>
+    `).join("");
+
+    // Update budget category selection in expense form
+    const expenseCategorySelect = document.getElementById("expense-category");
+    expenseCategorySelect.innerHTML = budgetCategories.map(cat => `
+        <option value="${cat.id}">${cat.name}</option>
     `).join("");
 
     saveData();
