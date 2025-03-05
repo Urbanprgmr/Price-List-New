@@ -69,13 +69,6 @@
             padding: 5px;
             cursor: pointer;
         }
-        .edit-btn {
-            background: orange;
-            color: white;
-            border: none;
-            padding: 5px;
-            cursor: pointer;
-        }
         .chart-container {
             margin-top: 20px;
         }
@@ -134,42 +127,25 @@
 </div>
 
 <script>
-    let totalIncome = 0, totalUtilities = 0;
-    let remainingIncome = 0;
-    let budgets = { saving: 0, life: 0, coffee: 0, extra: 0 };
+    let totalIncome = parseFloat(localStorage.getItem("totalIncome")) || 0;
+    let totalUtilities = parseFloat(localStorage.getItem("totalUtilities")) || 0;
+    let remainingIncome = totalIncome - totalUtilities;
+    let budgets = JSON.parse(localStorage.getItem("budgets")) || { saving: 0, life: 0, coffee: 0, extra: 0 };
     let budgetChart;
+
+    function saveData() {
+        localStorage.setItem("totalIncome", totalIncome);
+        localStorage.setItem("totalUtilities", totalUtilities);
+        localStorage.setItem("budgets", JSON.stringify(budgets));
+    }
 
     function addIncome() {
         let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
         let date = document.getElementById("incomeDate").value;
         if (!date) return alert("Please select a date.");
-
         totalIncome += amount;
-        let incomeList = document.getElementById("incomeList");
-        let li = document.createElement("li");
-        li.innerHTML = `${date}: ${amount} MVR 
-            <button class="edit-btn" onclick="editIncome(this, ${amount})">Edit</button> 
-            <button class="delete-btn" onclick="deleteIncome(this, ${amount})">Delete</button>`;
-        incomeList.appendChild(li);
-
         document.getElementById("totalIncome").innerText = totalIncome;
-        updateBudgets();
-    }
-
-    function editIncome(button, oldAmount) {
-        let newAmount = prompt("Enter new amount:", oldAmount);
-        if (newAmount !== null) {
-            totalIncome += parseFloat(newAmount) - oldAmount;
-            document.getElementById("totalIncome").innerText = totalIncome;
-            button.parentElement.innerHTML = button.parentElement.innerHTML.replace(oldAmount, newAmount);
-            updateBudgets();
-        }
-    }
-
-    function deleteIncome(button, amount) {
-        totalIncome -= amount;
-        document.getElementById("totalIncome").innerText = totalIncome;
-        button.parentElement.remove();
+        saveData();
         updateBudgets();
     }
 
@@ -177,22 +153,9 @@
         let name = document.getElementById("utilityName").value;
         let amount = parseFloat(document.getElementById("utilityAmount").value) || 0;
         if (!name) return alert("Enter utility name.");
-
         totalUtilities += amount;
-        let utilityList = document.getElementById("utilityList");
-        let li = document.createElement("li");
-        li.innerHTML = `${name}: ${amount} MVR 
-            <button class="delete-btn" onclick="deleteUtility(this, ${amount})">Delete</button>`;
-        utilityList.appendChild(li);
-
         document.getElementById("totalUtilities").innerText = totalUtilities;
-        updateBudgets();
-    }
-
-    function deleteUtility(button, amount) {
-        totalUtilities -= amount;
-        document.getElementById("totalUtilities").innerText = totalUtilities;
-        button.parentElement.remove();
+        saveData();
         updateBudgets();
     }
 
@@ -202,7 +165,13 @@
         budgets.life = total * (document.getElementById("lifePercent").value / 100);
         budgets.coffee = total * (document.getElementById("coffeePercent").value / 100);
         budgets.extra = total * (document.getElementById("extraPercent").value / 100);
-        document.getElementById("remainingBalance").innerText = total;
+        saveData();
+        updateChart();
+    }
+
+    function updateBudgets() {
+        remainingIncome = totalIncome - totalUtilities;
+        document.getElementById("remainingBalance").innerText = remainingIncome;
         updateChart();
     }
 
@@ -217,6 +186,12 @@
             }
         });
     }
+
+    // Load stored values on page load
+    document.getElementById("totalIncome").innerText = totalIncome;
+    document.getElementById("totalUtilities").innerText = totalUtilities;
+    updateBudgets();
+
 </script>
 
 </body>
