@@ -1,744 +1,450 @@
-// Expense & Budget Tracker – Script (data management and event handlers)
+document.addEventListener('DOMContentLoaded', () => {
+  // Data storage for incomes, expenses, and categories
+  const data = {
+    incomes: [],
+    expenses: [],
+    categories: []
+  };
+  let incomeId = 0, expenseId = 0, categoryId = 0;
 
-// Data arrays for incomes, expenses, categories, and savings target
-let incomes = [];
-let expenses = [];
-let categories = [];
-let savingsTarget = null;  // Object {type: 'fixed'/'percent', value: number}
+  // Get references to form fields and containers
+  const incomeForm = document.getElementById('income-form');
+  const incomeDescInput = document.getElementById('income-desc');
+  const incomeAmountInput = document.getElementById('income-amount');
+  const expenseForm = document.getElementById('expense-form');
+  const expenseDescInput = document.getElementById('expense-desc');
+  const expenseAmountInput = document.getElementById('expense-amount');
+  const expenseCategorySelect = document.getElementById('expense-category');
+  const categoryForm = document.getElementById('category-form');
+  const categoryNameInput = document.getElementById('category-name');
+  const categoryTypeSelect = document.getElementById('category-type');
+  const categoryAmountInput = document.getElementById('category-amount');
+  const historyList = document.getElementById('history-list');
+  const totalIncomeElem = document.getElementById('total-income');
+  const totalExpensesElem = document.getElementById('total-expenses');
+  const balanceElem = document.getElementById('balance');
+  // Edit modals and fields
+  const editIncomeModal = document.getElementById('editIncomeModal');
+  const editExpenseModal = document.getElementById('editExpenseModal');
+  const editCategoryModal = document.getElementById('editCategoryModal');
+  const editIncomeForm = document.getElementById('edit-income-form');
+  const editIncomeDesc = document.getElementById('edit-income-desc');
+  const editIncomeAmount = document.getElementById('edit-income-amount');
+  const editIncomeId = document.getElementById('edit-income-id');
+  const editExpenseForm = document.getElementById('edit-expense-form');
+  const editExpenseDesc = document.getElementById('edit-expense-desc');
+  const editExpenseAmount = document.getElementById('edit-expense-amount');
+  const editExpenseCategorySelect = document.getElementById('edit-expense-category');
+  const editExpenseId = document.getElementById('edit-expense-id');
+  const editCategoryForm = document.getElementById('edit-category-form');
+  const editCategoryName = document.getElementById('edit-category-name');
+  const editCategoryType = document.getElementById('edit-category-type');
+  const editCategoryAmount = document.getElementById('edit-category-amount');
+  const editCategoryId = document.getElementById('edit-category-id');
 
-// Current form mode for adding (either 'income' or 'expense')
-let currentAddType = 'expense';
+  // Helper: calculate total income
+  const getTotalIncome = () => data.incomes.reduce((sum, inc) => sum + inc.amount, 0);
 
-// Variables to track the item being edited
-let currentEditIndex = null;
-let currentEditType = null;
-
-// Utility: Generate a unique ID for new transactions based on current time and random number
-function generateId(type) {
-  const now = Date.now();
-  const random = Math.floor(Math.random() * 100000);
-  return `${type.charAt(0)}-${now}-${random}`;
-}
-
-// Utility: Get current month and year as an object
-function getCurrentMonthYear() {
-  const now = new Date();
-  return { month: now.getMonth(), year: now.getFullYear() };
-}
-
-// Load data from localStorage and migrate if needed for compatibility
-function loadData() {
-  const incomesData = localStorage.getItem('incomes');
-  const expensesData = localStorage.getItem('expenses');
-  const categoriesData = localStorage.getItem('categories');
-  const targetData = localStorage.getItem('savingsTarget');
-  let dataChanged = false;
-
-  // Parse or initialize data arrays
-  incomes = incomesData ? JSON.parse(incomesData) : [];
-  if (!Array.isArray(incomes)) incomes = [];
-  expenses = expensesData ? JSON.parse(expensesData) : [];
-  if (!Array.isArray(expenses)) expenses = [];
-  categories = categoriesData ? JSON.parse(categoriesData) : [];
-  if (!Array.isArray(categories)) categories = [];
-  savingsTarget = targetData ? JSON.parse(targetData) : null;
-
-  // Migrate category data (ensure objects with name & budget)
-  for (let i = 0; i < categories.length; i++) {
-    const cat = categories[i];
-    if (typeof cat === 'string') {
-      // Convert string category name to object with budget 0
-      categories[i] = { name: cat, budget: 0 };
-      dataChanged = true;
-    } else if (typeof cat === 'object') {
-      if (!cat.hasOwnProperty('budget')) {
-        cat.budget = 0;
-        dataChanged = true;
-      }
-      if (!cat.hasOwnProperty('name') && cat.category) {
-        // Rename 'category' property to 'name' if present (legacy support)
-        cat.name = cat.category;
-        delete cat.category;
-        dataChanged = true;
-      }
-    }
-  }
-  // Remove duplicate categories by name (keep first occurrence)
-  const seenNames = new Set();
-  categories = categories.filter(cat => {
-    if (seenNames.has(cat.name.toLowerCase())) {
-      dataChanged = true;
-      return false;
-    }
-    seenNames.add(cat.name.toLowerCase());
-    return true;
-  });
-  // If no categories exist, add a default category to ensure expense entries have one
-  if (categories.length === 0) {
-    categories.push({ name: 'Miscellaneous', budget: 0 });
-    dataChanged = true;
+  // Update displayed totals (income, expenses, balance)
+  function updateTotals() {
+    const totalIncome = getTotalIncome();
+    const totalExpenses = data.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    totalIncomeElem.textContent = totalIncome.toFixed(2);
+    totalExpensesElem.textContent = totalExpenses.toFixed(2);
+    balanceElem.textContent = (totalIncome - totalExpenses).toFixed(2);
   }
 
-  // Migrate incomes and expenses entries (add missing id/timestamp)
-  const totalOldEntries = (incomes ? incomes.length : 0) + (expenses ? expenses.length : 0);
-  const baseTime = Date.now() - (totalOldEntries * 60000);
-  for (let i = 0; i < incomes.length; i++) {
-    const inc = incomes[i];
-    if (typeof inc !== 'object') {
-      // Convert plain number to object
-      incomes[i] = { amount: parseFloat(inc) || 0 };
-    }
-    incomes[i].amount = parseFloat(incomes[i].amount) || 0;
-    if (!incomes[i].hasOwnProperty('id')) {
-      incomes[i].id = generateId('income');
-      dataChanged = true;
-    }
-    if (!incomes[i].hasOwnProperty('timestamp')) {
-      incomes[i].timestamp = baseTime + i * 60000;
-      dataChanged = true;
-    }
-  }
-  for (let j = 0; j < expenses.length; j++) {
-    const exp = expenses[j];
-    if (typeof exp !== 'object') {
-      // Convert plain number to object with default category
-      const amt = parseFloat(exp) || 0;
-      expenses[j] = { amount: amt, category: 'Miscellaneous' };
-    }
-    expenses[j].amount = parseFloat(expenses[j].amount) || 0;
-    if (!expenses[j].category) {
-      expenses[j].category = 'Miscellaneous';
-    }
-    if (!expenses[j].hasOwnProperty('id')) {
-      expenses[j].id = generateId('expense');
-      dataChanged = true;
-    }
-    if (!expenses[j].hasOwnProperty('timestamp')) {
-      expenses[j].timestamp = baseTime + (incomes.length + j) * 60000;
-      dataChanged = true;
-    }
-  }
-
-  // Save migrated data back to localStorage if any changes were made
-  if (dataChanged) {
-    localStorage.setItem('categories', JSON.stringify(categories));
-    localStorage.setItem('incomes', JSON.stringify(incomes));
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-    if (savingsTarget !== null) {
-      localStorage.setItem('savingsTarget', JSON.stringify(savingsTarget));
-    }
-  }
-}
-
-// Calculate total income, total expense, and balance for the current month
-function getCurrentMonthTotals() {
-  const { month, year } = getCurrentMonthYear();
-  let monthIncome = 0;
-  let monthExpense = 0;
-  for (const inc of incomes) {
-    const d = new Date(inc.timestamp);
-    if (d.getMonth() === month && d.getFullYear() === year) {
-      monthIncome += inc.amount;
-    }
-  }
-  for (const exp of expenses) {
-    const d = new Date(exp.timestamp);
-    if (d.getMonth() === month && d.getFullYear() === year) {
-      monthExpense += exp.amount;
-    }
-  }
-  return { income: monthIncome, expense: monthExpense, balance: monthIncome - monthExpense };
-}
-
-// Update the summary display (totals and savings target status)
-function updateSummaryDisplay() {
-  const now = new Date();
-  const titleEl = document.getElementById('summaryTitle');
-  if (titleEl) {
-    titleEl.textContent = now.toLocaleString('default', { month: 'long', year: 'numeric' }) + ' Summary';
-  }
-  const totals = getCurrentMonthTotals();
-  document.getElementById('totalIncome').textContent = totals.income.toFixed(2);
-  document.getElementById('totalExpense').textContent = totals.expense.toFixed(2);
-  const balanceEl = document.getElementById('balance');
-  balanceEl.textContent = totals.balance.toFixed(2);
-  // Color balance red if negative, normal if positive/zero
-  if (totals.balance < 0) {
-    balanceEl.parentElement.classList.add('negative');
-  } else {
-    balanceEl.parentElement.classList.remove('negative');
-  }
-  // Update savings target info
-  const targetInfoEl = document.getElementById('targetInfo');
-  if (savingsTarget && ((savingsTarget.type === 'fixed' && savingsTarget.value > 0) || (savingsTarget.type === 'percent' && savingsTarget.value > 0))) {
-    let targetAmount = 0;
-    if (savingsTarget.type === 'fixed') {
-      targetAmount = savingsTarget.value;
-    } else if (savingsTarget.type === 'percent') {
-      targetAmount = (savingsTarget.value / 100) * totals.income;
-    }
-    let savedAmount = totals.balance;
-    if (savedAmount < 0) savedAmount = 0;  // don't count negative balance as savings
-    let targetText = '';
-    if (savingsTarget.type === 'percent') {
-      targetText += `Target: ${savingsTarget.value}% of income = $${targetAmount.toFixed(2)}. `;
-    } else {
-      targetText += `Target: $${targetAmount.toFixed(2)}. `;
-    }
-    if (savedAmount >= targetAmount) {
-      targetText += `Savings target achieved! (Saved $${savedAmount.toFixed(2)}`;
-      if (savedAmount > targetAmount) {
-        targetText += `, $${(savedAmount - targetAmount).toFixed(2)} over target`;
-      }
-      targetText += ')';
-      targetInfoEl.classList.remove('target-not-met');
-      targetInfoEl.classList.add('target-met');
-    } else {
-      targetText += `Saved $${savedAmount.toFixed(2)} of target. Need $${(targetAmount - savedAmount).toFixed(2)} more to reach target.`;
-      targetInfoEl.classList.remove('target-met');
-      targetInfoEl.classList.add('target-not-met');
-    }
-    targetInfoEl.textContent = targetText;
-  } else {
-    targetInfoEl.textContent = 'No savings target set.';
-    targetInfoEl.classList.remove('target-met', 'target-not-met');
-  }
-}
-
-// Update the category budgets summary (per category spending vs budget for current month)
-function updateCategorySummary() {
-  const container = document.getElementById('categorySummary');
-  container.innerHTML = '';
-  const { month, year } = getCurrentMonthYear();
-  categories.forEach(cat => {
-    const catName = cat.name;
-    const budget = parseFloat(cat.budget) || 0;
-    // Calculate total spent in this category for current month
-    let spent = 0;
-    for (const exp of expenses) {
-      const d = new Date(exp.timestamp);
-      if (d.getMonth() === month && d.getFullYear() === year && exp.category === catName) {
-        spent += exp.amount;
-      }
-    }
-    // Create row container
-    const row = document.createElement('div');
-    row.className = 'cat-summary-row';
-    // Category name label
-    const label = document.createElement('div');
-    label.className = 'cat-label';
-    label.textContent = catName;
-    // Spending info text
-    const info = document.createElement('div');
-    info.className = 'cat-info';
-    if (budget > 0) {
-      const remaining = budget - spent;
-      info.textContent = `$${spent.toFixed(2)} / $${budget.toFixed(2)} spent`;
-      if (spent > budget) {
-        info.textContent += ` (Over by $${(spent - budget).toFixed(2)})`;
+  // Update all budget category entries in the history (allocated and spent values)
+  function updateAllCategoriesUI() {
+    const totalIncome = getTotalIncome();
+    data.categories.forEach(cat => {
+      const catItem = document.querySelector(`.history-item[data-type="category"][data-id="${cat.id}"]`);
+      if (!catItem) return;
+      const itemTextElem = catItem.querySelector('.item-text');
+      // Calculate current allocated amount (if percentage, based on current total income)
+      const allocatedAmount = (cat.type === 'percent') ? (cat.allocated / 100) * totalIncome : cat.allocated;
+      // Calculate total spent in this category
+      const spentAmount = data.expenses
+        .filter(exp => exp.categoryId === cat.id)
+        .reduce((sum, exp) => sum + exp.amount, 0);
+      // Prepare text content for the category entry
+      if (cat.type === 'percent') {
+        // Percentage-based budget
+        const pctStr = Number.isInteger(cat.allocated) ? cat.allocated : parseFloat(cat.allocated.toFixed(2));
+        itemTextElem.textContent = `Budget ${cat.name}: $${allocatedAmount.toFixed(2)} (${pctStr}% of income); Spent $${spentAmount.toFixed(2)}`;
       } else {
-        info.textContent += ` (Remaining $${remaining.toFixed(2)})`;
+        // Fixed amount budget
+        itemTextElem.textContent = `Budget ${cat.name}: $${allocatedAmount.toFixed(2)}; Spent $${spentAmount.toFixed(2)}`;
       }
+      // Highlight if overspent
+      if (spentAmount > allocatedAmount) {
+        catItem.classList.add('overspent');
+      } else {
+        catItem.classList.remove('overspent');
+      }
+    });
+  }
+
+  // Refresh category options in the expense dropdowns (main form and edit form)
+  function updateCategoryOptions() {
+    // Clear existing options in expense add form (keep placeholder at index 0)
+    while (expenseCategorySelect.options.length > 1) {
+      expenseCategorySelect.remove(1);
+    }
+    // Clear and repopulate edit expense category select
+    editExpenseCategorySelect.innerHTML = '';
+    data.categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      expenseCategorySelect.appendChild(opt.cloneNode(true));  // add to main form
+      editExpenseCategorySelect.appendChild(opt);               // add to edit form
+    });
+  }
+
+  // Open and close modals
+  function openModal(modalEl) {
+    modalEl.classList.add('open');
+  }
+  function closeModal(modalEl) {
+    modalEl.classList.remove('open');
+  }
+
+  // Handle placeholder text when changing budget type (fixed vs percent)
+  function handleCategoryTypeChange(selectEl, amountInput) {
+    if (selectEl.value === 'percent') {
+      amountInput.placeholder = 'Percentage (%)';
+      amountInput.max = 100;
     } else {
-      info.textContent = `$${spent.toFixed(2)} spent (no budget set)`;
+      amountInput.placeholder = 'Amount';
+      amountInput.removeAttribute('max');
     }
-    // Progress bar for category (if budget defined)
-    const barContainer = document.createElement('div');
-    barContainer.className = 'cat-bar-container';
-    if (budget > 0) {
-      const barFill = document.createElement('div');
-      barFill.className = 'cat-bar-fill';
-      let percentage = 0;
-      if (budget > 0) {
-        percentage = Math.floor((spent / budget) * 100);
-        if (percentage > 100) percentage = 100;
-      }
-      barFill.style.width = percentage + '%';
-      if (spent > budget) {
-        barFill.classList.add('over-budget');
-      }
-      barContainer.appendChild(barFill);
-    }
-    // Append elements to row
-    row.appendChild(label);
-    row.appendChild(info);
-    if (budget > 0) {
-      row.appendChild(barContainer);
-    }
-    container.appendChild(row);
-  });
-}
-
-// Get a combined list of all transactions (income and expense) sorted by time
-function getCombinedTransactionsSorted() {
-  const transactions = [];
-  for (const inc of incomes) {
-    transactions.push({ type: 'income', amount: inc.amount, category: null, timestamp: inc.timestamp, id: inc.id });
   }
-  for (const exp of expenses) {
-    transactions.push({ type: 'expense', amount: exp.amount, category: exp.category, timestamp: exp.timestamp, id: exp.id });
-  }
-  // Sort by timestamp ascending, then reverse for newest first
-  transactions.sort((a, b) => a.timestamp - b.timestamp);
-  return transactions;
-}
+  // Attach change events for type selects to update placeholder text
+  categoryTypeSelect.addEventListener('change', () => handleCategoryTypeChange(categoryTypeSelect, categoryAmountInput));
+  editCategoryType.addEventListener('change', () => handleCategoryTypeChange(editCategoryType, editCategoryAmount));
 
-// Update the history list display (list of transactions with timestamps)
-function updateHistoryList() {
-  const historyContainer = document.getElementById('historyList');
-  historyContainer.innerHTML = '';
-  const transList = getCombinedTransactionsSorted().reverse();  // newest first
-  for (const entry of transList) {
+  /** Event Handlers **/
+
+  // Add Income
+  incomeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const desc = incomeDescInput.value.trim();
+    const amountVal = parseFloat(incomeAmountInput.value);
+    if (isNaN(amountVal)) return;  // invalid input
+    incomeId++;
+    const newIncome = { id: incomeId, desc: desc, amount: amountVal, timestamp: Date.now() };
+    data.incomes.push(newIncome);
+    // Create history item element for the new income
     const item = document.createElement('div');
-    item.className = 'trans-item';
-    if (entry.type === 'income') {
-      item.classList.add('income-item');
+    item.className = 'history-item fade-in';
+    item.dataset.type = 'income';
+    item.dataset.id = newIncome.id;
+    // Content text
+    const textSpan = document.createElement('span');
+    textSpan.className = 'item-text';
+    const amountStr = `$${newIncome.amount.toFixed(2)}`;
+    textSpan.textContent = desc ? `Income: ${amountStr} - ${desc}` : `Income: ${amountStr}`;
+    // Action buttons (Edit/Delete)
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'item-actions';
+    actionsDiv.innerHTML = `<button type="button" class="edit-btn">&#9998;</button>
+                             <button type="button" class="delete-btn">&#128465;</button>`;
+    item.appendChild(textSpan);
+    item.appendChild(actionsDiv);
+    historyList.appendChild(item);
+    // Update totals and related displays
+    updateTotals();
+    updateAllCategoriesUI(); // in case percent budgets need recalculation
+    // Clear input fields
+    incomeDescInput.value = '';
+    incomeAmountInput.value = '';
+  });
+
+  // Add Expense
+  expenseForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const desc = expenseDescInput.value.trim();
+    const amountVal = parseFloat(expenseAmountInput.value);
+    const catId = expenseCategorySelect.value;
+    if (isNaN(amountVal) || !catId) return;
+    expenseId++;
+    const newExpense = { id: expenseId, desc: desc, amount: amountVal, categoryId: Number(catId), timestamp: Date.now() };
+    data.expenses.push(newExpense);
+    // Create history item for expense
+    const item = document.createElement('div');
+    item.className = 'history-item fade-in';
+    item.dataset.type = 'expense';
+    item.dataset.id = newExpense.id;
+    item.dataset.categoryId = newExpense.categoryId;
+    // Determine category name
+    const cat = data.categories.find(c => c.id === newExpense.categoryId);
+    const categoryName = cat ? cat.name : 'Category';
+    const textSpan = document.createElement('span');
+    textSpan.className = 'item-text';
+    const amountStr = `$${newExpense.amount.toFixed(2)}`;
+    textSpan.textContent = desc 
+      ? `Expense (${categoryName}): ${amountStr} - ${desc}` 
+      : `Expense (${categoryName}): ${amountStr}`;
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'item-actions';
+    actionsDiv.innerHTML = `<button type="button" class="edit-btn">&#9998;</button>
+                             <button type="button" class="delete-btn">&#128465;</button>`;
+    item.appendChild(textSpan);
+    item.appendChild(actionsDiv);
+    historyList.appendChild(item);
+    // Update totals and category usage
+    updateTotals();
+    updateAllCategoriesUI();
+    // Clear fields and reset category selector
+    expenseDescInput.value = '';
+    expenseAmountInput.value = '';
+    expenseCategorySelect.selectedIndex = 0; // reset to "Select Category"
+  });
+
+  // Add Budget Category
+  categoryForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = categoryNameInput.value.trim();
+    const type = categoryTypeSelect.value;
+    let allocatedVal = parseFloat(categoryAmountInput.value);
+    if (!name || isNaN(allocatedVal)) return;
+    // Clamp percentage between 0 and 100 if needed
+    if (type === 'percent') {
+      if (allocatedVal < 0) allocatedVal = 0;
+      if (allocatedVal > 100) allocatedVal = 100;
+    }
+    categoryId++;
+    const newCat = { id: categoryId, name: name, type: type, allocated: allocatedVal, timestamp: Date.now() };
+    data.categories.push(newCat);
+    // Create history item for category
+    const item = document.createElement('div');
+    item.className = 'history-item fade-in';
+    item.dataset.type = 'category';
+    item.dataset.id = newCat.id;
+    const textSpan = document.createElement('span');
+    textSpan.className = 'item-text';
+    // Calculate initial allocated amount (if percent, based on current total income)
+    const totalIncome = getTotalIncome();
+    const allocatedAmount = (newCat.type === 'percent') ? (newCat.allocated / 100) * totalIncome : newCat.allocated;
+    if (newCat.type === 'percent') {
+      const pctStr = Number.isInteger(newCat.allocated) ? newCat.allocated : parseFloat(newCat.allocated.toFixed(2));
+      textSpan.textContent = `Budget ${newCat.name}: $${allocatedAmount.toFixed(2)} (${pctStr}% of income); Spent $0.00`;
     } else {
-      item.classList.add('expense-item');
+      textSpan.textContent = `Budget ${newCat.name}: $${allocatedAmount.toFixed(2)}; Spent $0.00`;
     }
-    // Assign data attributes for id and type (to identify on edit/delete)
-    item.dataset.id = entry.id;
-    item.dataset.type = entry.type;
-    // Amount element (with +/– sign)
-    const amountEl = document.createElement('span');
-    amountEl.className = 'trans-amount';
-    amountEl.textContent = (entry.type === 'income' ? '+ $' : '- $') + entry.amount.toFixed(2);
-    // Category (or label "Income" for income entries)
-    const categoryEl = document.createElement('span');
-    categoryEl.className = 'trans-category';
-    categoryEl.textContent = entry.type === 'expense' ? entry.category : 'Income';
-    // Timestamp element (formatted locale string)
-    const dateEl = document.createElement('span');
-    dateEl.className = 'trans-date';
-    dateEl.textContent = new Date(entry.timestamp).toLocaleString();
-    // Actions (Edit/Delete buttons)
-    const actionsEl = document.createElement('span');
-    actionsEl.className = 'trans-actions';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
-    editBtn.textContent = 'Edit';
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.textContent = 'Delete';
-    actionsEl.appendChild(editBtn);
-    actionsEl.appendChild(deleteBtn);
-    // Assemble transaction item
-    item.appendChild(amountEl);
-    item.appendChild(categoryEl);
-    item.appendChild(dateEl);
-    item.appendChild(actionsEl);
-    historyContainer.appendChild(item);
-  }
-}
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'item-actions';
+    actionsDiv.innerHTML = `<button type="button" class="edit-btn">&#9998;</button>
+                             <button type="button" class="delete-btn">&#128465;</button>`;
+    item.appendChild(textSpan);
+    item.appendChild(actionsDiv);
+    historyList.appendChild(item);
+    // Update category options in dropdowns and refresh calculations
+    updateCategoryOptions();
+    updateAllCategoriesUI();  // spent remains 0, but ensures percent allocated shown correctly if incomes exist
+    // Clear form fields
+    categoryNameInput.value = '';
+    categoryTypeSelect.value = 'fixed';
+    categoryAmountInput.value = '';
+    categoryAmountInput.placeholder = 'Amount';
+  });
 
-// Handler for adding a new income or expense
-function handleAddTransaction(event) {
-  event.preventDefault();
-  const amountInput = document.getElementById('amountInput');
-  const categorySelect = document.getElementById('categorySelect');
-  const amountVal = parseFloat(amountInput.value);
-  if (isNaN(amountVal) || amountVal < 0) {
-    alert('Please enter a valid amount.');
-    return;
-  }
-  if (currentAddType === 'expense') {
-    const categoryVal = categorySelect.value;
-    if (!categoryVal) {
-      alert('Please select a category.');
-      return;
-    }
-    // Create new expense entry
-    const newExp = {
-      amount: amountVal,
-      category: categoryVal,
-      timestamp: Date.now(),
-      id: generateId('expense')
-    };
-    expenses.push(newExp);
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-  } else {
-    // Create new income entry
-    const newInc = {
-      amount: amountVal,
-      timestamp: Date.now(),
-      id: generateId('income')
-    };
-    incomes.push(newInc);
-    localStorage.setItem('incomes', JSON.stringify(incomes));
-  }
-  // Clear form inputs
-  amountInput.value = '';
-  if (currentAddType === 'expense') {
-    categorySelect.selectedIndex = 0;
-  }
-  // Refresh UI
-  updateSummaryDisplay();
-  updateHistoryList();
-  updateCategorySummary();
-}
-
-// Handler for category selection change in the add expense form (checks for "Add new category")
-function handleCategorySelectChange() {
-  const categorySelect = document.getElementById('categorySelect');
-  if (categorySelect.value === 'NEW_CATEGORY') {
-    const newName = prompt('Enter new category name:');
-    if (newName) {
-      const nameTrimmed = newName.trim();
-      if (nameTrimmed === '') {
-        alert('Category name cannot be empty.');
-      } else {
-        const exists = categories.some(cat => cat.name.toLowerCase() === nameTrimmed.toLowerCase());
-        if (exists) {
-          alert('Category already exists.');
-        } else {
-          const newCat = { name: nameTrimmed, budget: 0 };
-          categories.push(newCat);
-          localStorage.setItem('categories', JSON.stringify(categories));
-          populateCategorySelect();
-          categorySelect.value = nameTrimmed;
-          updateCategorySummary();
+  // Event delegation for Edit/Delete buttons in the history list
+  historyList.addEventListener('click', e => {
+    const btn = e.target;
+    if (!btn.classList.contains('edit-btn') && !btn.classList.contains('delete-btn')) return;
+    const itemDiv = btn.closest('.history-item');
+    if (!itemDiv) return;
+    const type = itemDiv.dataset.type;
+    const id = Number(itemDiv.dataset.id);
+    
+    // DELETE action
+    if (btn.classList.contains('delete-btn')) {
+      if (type === 'income') {
+        // Remove income from data and DOM
+        data.incomes = data.incomes.filter(inc => inc.id !== id);
+        itemDiv.classList.add('fade-out');
+        setTimeout(() => itemDiv.remove(), 300);
+        updateTotals();
+        updateAllCategoriesUI(); // update percent budgets if total income changed
+      } 
+      else if (type === 'expense') {
+        const expIndex = data.expenses.findIndex(exp => exp.id === id);
+        if (expIndex !== -1) {
+          const catId = data.expenses[expIndex].categoryId;
+          data.expenses.splice(expIndex, 1);
+          itemDiv.classList.add('fade-out');
+          setTimeout(() => itemDiv.remove(), 300);
+          updateTotals();
+          updateAllCategoriesUI(); // update that category's spent total
+        }
+      } 
+      else if (type === 'category') {
+        // Confirm category deletion as it removes all associated expenses
+        if (!confirm('Delete this category and all its related expenses?')) return;
+        const catIndex = data.categories.findIndex(cat => cat.id === id);
+        if (catIndex !== -1) {
+          const catId = data.categories[catIndex].id;
+          // Remove category and its expenses from data
+          data.categories.splice(catIndex, 1);
+          data.expenses = data.expenses.filter(exp => exp.categoryId !== catId);
+          // Remove category item from DOM
+          itemDiv.classList.add('fade-out');
+          setTimeout(() => itemDiv.remove(), 300);
+          // Remove all expense items associated with this category from DOM
+          document.querySelectorAll(`.history-item[data-type="expense"][data-category-id="${catId}"]`)
+            .forEach(expItem => {
+              expItem.classList.add('fade-out');
+              setTimeout(() => expItem.remove(), 300);
+            });
+          // Update category options, totals, and remaining categories UI
+          updateCategoryOptions();
+          updateTotals();
+          updateAllCategoriesUI();
         }
       }
     }
-    // Reset selection if no valid name was provided
-    categorySelect.selectedIndex = 0;
-  }
-}
 
-// Populate the category dropdown in the add expense form (with existing categories and an "add new" option)
-function populateCategorySelect() {
-  const categorySelect = document.getElementById('categorySelect');
-  categorySelect.innerHTML = '';
-  const placeholderOption = document.createElement('option');
-  placeholderOption.value = '';
-  placeholderOption.disabled = true;
-  placeholderOption.selected = true;
-  placeholderOption.textContent = 'Select category';
-  categorySelect.appendChild(placeholderOption);
-  for (const cat of categories) {
-    const option = document.createElement('option');
-    option.value = cat.name;
-    option.textContent = cat.name;
-    categorySelect.appendChild(option);
-  }
-  const newOption = document.createElement('option');
-  newOption.value = 'NEW_CATEGORY';
-  newOption.textContent = 'Add new category...';
-  categorySelect.appendChild(newOption);
-}
-
-// Switch the add form between Income and Expense mode
-function switchAddType(type) {
-  currentAddType = type;
-  const expenseFields = document.getElementById('expenseFields');
-  const addBtn = document.getElementById('addBtn');
-  const incomeTab = document.getElementById('incomeTab');
-  const expenseTab = document.getElementById('expenseTab');
-  if (type === 'income') {
-    expenseFields.style.display = 'none';
-    addBtn.textContent = 'Add Income';
-    incomeTab.classList.add('active');
-    expenseTab.classList.remove('active');
-  } else {
-    expenseFields.style.display = 'block';
-    addBtn.textContent = 'Add Expense';
-    expenseTab.classList.add('active');
-    incomeTab.classList.remove('active');
-  }
-}
-
-// Open the Settings modal and populate the fields
-function openSettingsModal() {
-  // Set current target values in the form
-  const targetTypeSelect = document.getElementById('targetType');
-  const targetValueInput = document.getElementById('targetValue');
-  if (savingsTarget) {
-    targetTypeSelect.value = savingsTarget.type;
-    targetValueInput.value = savingsTarget.value;
-  } else {
-    targetTypeSelect.value = 'percent';
-    targetValueInput.value = '';
-  }
-  // Populate category settings (categories list and budget inputs)
-  populateCategorySettings();
-  const modal = document.getElementById('settingsModal');
-  modal.style.display = 'flex';
-  setTimeout(() => modal.classList.add('show'), 10);
-}
-
-// Close the Settings modal
-function closeSettingsModal() {
-  const modal = document.getElementById('settingsModal');
-  modal.classList.remove('show');
-  setTimeout(() => { modal.style.display = 'none'; }, 300);
-  // Refresh main UI in case of changes
-  updateSummaryDisplay();
-  updateCategorySummary();
-  populateCategorySelect();
-}
-
-// Populate the category settings section in the Settings modal (list categories with budgets and add-new form)
-function populateCategorySettings() {
-  const container = document.getElementById('categorySettings');
-  container.innerHTML = '';
-  // Create categories table
-  const table = document.createElement('table');
-  table.className = 'category-table';
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const thName = document.createElement('th');
-  thName.textContent = 'Category';
-  const thBudget = document.createElement('th');
-  thBudget.textContent = 'Monthly Budget ($)';
-  headerRow.appendChild(thName);
-  headerRow.appendChild(thBudget);
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  categories.forEach((cat, index) => {
-    const row = document.createElement('tr');
-    const nameCell = document.createElement('td');
-    nameCell.textContent = cat.name;
-    const budgetCell = document.createElement('td');
-    const budgetInput = document.createElement('input');
-    budgetInput.type = 'number';
-    budgetInput.min = '0';
-    budgetInput.step = '0.01';
-    budgetInput.value = parseFloat(cat.budget) || 0;
-    budgetInput.dataset.index = index;
-    budgetInput.className = 'category-budget-input';
-    budgetCell.appendChild(budgetInput);
-    row.appendChild(nameCell);
-    row.appendChild(budgetCell);
-    tbody.appendChild(row);
+    // EDIT action
+    else if (btn.classList.contains('edit-btn')) {
+      if (type === 'income') {
+        const inc = data.incomes.find(i => i.id === id);
+        if (!inc) return;
+        editIncomeDesc.value = inc.desc;
+        editIncomeAmount.value = inc.amount;
+        editIncomeId.value = inc.id;
+        openModal(editIncomeModal);
+      } 
+      else if (type === 'expense') {
+        const exp = data.expenses.find(ex => ex.id === id);
+        if (!exp) return;
+        editExpenseDesc.value = exp.desc;
+        editExpenseAmount.value = exp.amount;
+        editExpenseId.value = exp.id;
+        editExpenseCategorySelect.value = exp.categoryId;
+        openModal(editExpenseModal);
+      } 
+      else if (type === 'category') {
+        const cat = data.categories.find(c => c.id === id);
+        if (!cat) return;
+        editCategoryName.value = cat.name;
+        editCategoryType.value = cat.type;
+        editCategoryAmount.value = cat.allocated;
+        editCategoryId.value = cat.id;
+        // Update placeholder to match current type
+        handleCategoryTypeChange(editCategoryType, editCategoryAmount);
+        openModal(editCategoryModal);
+      }
+    }
   });
-  table.appendChild(tbody);
-  container.appendChild(table);
-  // Add new category form
-  const addContainer = document.createElement('div');
-  addContainer.className = 'new-category-form';
-  const newNameInput = document.createElement('input');
-  newNameInput.type = 'text';
-  newNameInput.id = 'newCategoryName';
-  newNameInput.placeholder = 'New category name';
-  newNameInput.maxLength = 30;
-  const newBudgetInput = document.createElement('input');
-  newBudgetInput.type = 'number';
-  newBudgetInput.id = 'newCategoryBudget';
-  newBudgetInput.placeholder = 'Budget';
-  newBudgetInput.min = '0';
-  newBudgetInput.step = '0.01';
-  const addCatBtn = document.createElement('button');
-  addCatBtn.id = 'addCategoryBtn';
-  addCatBtn.textContent = 'Add Category';
-  addContainer.appendChild(newNameInput);
-  addContainer.appendChild(newBudgetInput);
-  addContainer.appendChild(addCatBtn);
-  container.appendChild(addContainer);
-  // Attach events for budget input changes
-  const budgetInputs = container.querySelectorAll('input.category-budget-input');
-  budgetInputs.forEach(input => {
-    input.addEventListener('change', e => {
-      const idx = e.target.dataset.index;
-      let newVal = parseFloat(e.target.value);
-      if (isNaN(newVal) || newVal < 0) newVal = 0;
-      categories[idx].budget = newVal;
-      localStorage.setItem('categories', JSON.stringify(categories));
+
+  // Cancel buttons in edit modals (close modal without saving)
+  document.querySelectorAll('.cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modalId = btn.getAttribute('data-modal');
+      const modalEl = document.getElementById(modalId);
+      if (modalEl) closeModal(modalEl);
     });
   });
-  // Attach event for adding a new category
-  addCatBtn.addEventListener('click', () => {
-    const nameVal = newNameInput.value.trim();
-    let budgetVal = parseFloat(newBudgetInput.value);
-    if (nameVal === '') {
-      alert('Please enter a category name.');
-      return;
+
+  // Submit updated Income
+  editIncomeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = Number(editIncomeId.value);
+    const desc = editIncomeDesc.value.trim();
+    const amountVal = parseFloat(editIncomeAmount.value);
+    if (isNaN(amountVal)) return;
+    const inc = data.incomes.find(i => i.id === id);
+    if (!inc) return;
+    // Update data
+    inc.desc = desc;
+    inc.amount = amountVal;
+    // Update DOM text
+    const itemDiv = document.querySelector(`.history-item[data-type="income"][data-id="${id}"]`);
+    if (itemDiv) {
+      const textSpan = itemDiv.querySelector('.item-text');
+      const amountStr = `$${inc.amount.toFixed(2)}`;
+      textSpan.textContent = desc ? `Income: ${amountStr} - ${desc}` : `Income: ${amountStr}`;
     }
-    if (categories.some(cat => cat.name.toLowerCase() === nameVal.toLowerCase())) {
-      alert('Category already exists.');
-      return;
-    }
-    if (isNaN(budgetVal) || budgetVal < 0) {
-      budgetVal = 0;
-    }
-    const newCatObj = { name: nameVal, budget: budgetVal };
-    categories.push(newCatObj);
-    localStorage.setItem('categories', JSON.stringify(categories));
-    // Refresh the settings UI and main category list
-    populateCategorySettings();
-    populateCategorySelect();
-    updateCategorySummary();
+    updateTotals();
+    updateAllCategoriesUI();
+    closeModal(editIncomeModal);
   });
-}
 
-// Open the Edit Transaction modal for a given transaction type and index
-function openEditModal(type, index) {
-  currentEditType = type;
-  currentEditIndex = index;
-  const editAmountInput = document.getElementById('editAmount');
-  const editCategoryField = document.getElementById('editCategoryField');
-  const editCategorySelect = document.getElementById('editCategory');
-  if (type === 'income') {
-    const inc = incomes[index];
-    editAmountInput.value = inc.amount;
-    editCategoryField.style.display = 'none';
-  } else {
-    const exp = expenses[index];
-    editAmountInput.value = exp.amount;
-    // Populate category select with all categories
-    editCategorySelect.innerHTML = '';
-    for (const cat of categories) {
-      const opt = document.createElement('option');
-      opt.value = cat.name;
-      opt.textContent = cat.name;
-      editCategorySelect.appendChild(opt);
+  // Submit updated Expense
+  editExpenseForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = Number(editExpenseId.value);
+    const desc = editExpenseDesc.value.trim();
+    const amountVal = parseFloat(editExpenseAmount.value);
+    const newCatId = Number(editExpenseCategorySelect.value);
+    if (isNaN(amountVal) || !newCatId) return;
+    const exp = data.expenses.find(ex => ex.id === id);
+    if (!exp) return;
+    // Track old category for updates
+    const oldCatId = exp.categoryId;
+    // Update data
+    exp.desc = desc;
+    exp.amount = amountVal;
+    exp.categoryId = newCatId;
+    // Update DOM text and data attributes for this expense item
+    const itemDiv = document.querySelector(`.history-item[data-type="expense"][data-id="${id}"]`);
+    if (itemDiv) {
+      itemDiv.dataset.categoryId = exp.categoryId;
+      const textSpan = itemDiv.querySelector('.item-text');
+      const newCat = data.categories.find(c => c.id === exp.categoryId);
+      const categoryName = newCat ? newCat.name : 'Category';
+      const amountStr = `$${exp.amount.toFixed(2)}`;
+      textSpan.textContent = desc 
+        ? `Expense (${categoryName}): ${amountStr} - ${desc}` 
+        : `Expense (${categoryName}): ${amountStr}`;
     }
-    editCategorySelect.value = exp.category;
-    editCategoryField.style.display = 'block';
-  }
-  const modal = document.getElementById('editModal');
-  modal.style.display = 'flex';
-  setTimeout(() => modal.classList.add('show'), 10);
-}
-
-// Close the Edit Transaction modal
-function closeEditModal() {
-  const modal = document.getElementById('editModal');
-  modal.classList.remove('show');
-  setTimeout(() => { modal.style.display = 'none'; }, 300);
-}
-
-// Handler for saving an edited transaction
-function handleSaveEdit(event) {
-  event.preventDefault();
-  if (currentEditIndex === null || currentEditType === null) return;
-  const editAmountInput = document.getElementById('editAmount');
-  const editCategorySelect = document.getElementById('editCategory');
-  let newAmount = parseFloat(editAmountInput.value);
-  if (isNaN(newAmount) || newAmount < 0) {
-    alert('Please enter a valid amount.');
-    return;
-  }
-  if (currentEditType === 'income') {
-    incomes[currentEditIndex].amount = newAmount;
-    localStorage.setItem('incomes', JSON.stringify(incomes));
-  } else if (currentEditType === 'expense') {
-    const newCategory = editCategorySelect.value;
-    if (!newCategory) {
-      alert('Please select a category.');
-      return;
-    }
-    expenses[currentEditIndex].amount = newAmount;
-    expenses[currentEditIndex].category = newCategory;
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-  }
-  closeEditModal();
-  updateSummaryDisplay();
-  updateHistoryList();
-  updateCategorySummary();
-}
-
-// Handler for deleting a transaction
-function handleDeleteTransaction(type, index) {
-  if (type === 'income') {
-    incomes.splice(index, 1);
-    localStorage.setItem('incomes', JSON.stringify(incomes));
-  } else if (type === 'expense') {
-    expenses.splice(index, 1);
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-  }
-  updateSummaryDisplay();
-  updateHistoryList();
-  updateCategorySummary();
-}
-
-// Handler for saving the savings target from settings
-function handleSaveTarget() {
-  const targetTypeSelect = document.getElementById('targetType');
-  const targetValueInput = document.getElementById('targetValue');
-  const typeVal = targetTypeSelect.value;
-  let valueVal = parseFloat(targetValueInput.value);
-  if (isNaN(valueVal) || valueVal < 0) {
-    alert('Please enter a valid target value.');
-    return;
-  }
-  if (typeVal === 'percent' && valueVal > 100) {
-    alert('Percentage cannot exceed 100.');
-    return;
-  }
-  savingsTarget = { type: typeVal, value: valueVal };
-  localStorage.setItem('savingsTarget', JSON.stringify(savingsTarget));
-  updateSummaryDisplay();
-  closeSettingsModal();
-}
-
-// Initialize the application
-function initApp() {
-  loadData();
-  populateCategorySelect();
-  updateSummaryDisplay();
-  updateCategorySummary();
-  updateHistoryList();
-  // Event listeners
-  document.getElementById('addForm').addEventListener('submit', handleAddTransaction);
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    document.getElementById('amountInput').value = '';
-    if (currentAddType === 'expense') {
-      document.getElementById('categorySelect').selectedIndex = 0;
-    }
+    updateTotals();
+    updateAllCategoriesUI();
+    closeModal(editExpenseModal);
   });
-  document.getElementById('incomeTab').addEventListener('click', () => switchAddType('income'));
-  document.getElementById('expenseTab').addEventListener('click', () => switchAddType('expense'));
-  document.getElementById('categorySelect').addEventListener('change', handleCategorySelectChange);
-  document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
-  document.getElementById('saveTargetBtn').addEventListener('click', handleSaveTarget);
-  document.getElementById('closeSettings').addEventListener('click', closeSettingsModal);
-  document.getElementById('editForm').addEventListener('submit', handleSaveEdit);
-  document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
-  document.getElementById('closeEdit').addEventListener('click', closeEditModal);
-  // Delegate click events for Edit/Delete in history list
-  document.getElementById('historyList').addEventListener('click', e => {
-    const target = e.target;
-    if (target.classList.contains('edit-btn')) {
-      const itemEl = target.closest('.trans-item');
-      if (!itemEl) return;
-      const id = itemEl.dataset.id;
-      const type = itemEl.dataset.type;
-      if (type === 'income') {
-        const idx = incomes.findIndex(inc => inc.id === id);
-        if (idx !== -1) openEditModal('income', idx);
-      } else if (type === 'expense') {
-        const idx = expenses.findIndex(exp => exp.id === id);
-        if (idx !== -1) openEditModal('expense', idx);
-      }
-    } else if (target.classList.contains('delete-btn')) {
-      const itemEl = target.closest('.trans-item');
-      if (!itemEl) return;
-      const id = itemEl.dataset.id;
-      const type = itemEl.dataset.type;
-      if (confirm('Delete this entry?')) {
-        if (type === 'income') {
-          const idx = incomes.findIndex(inc => inc.id === id);
-          if (idx !== -1) handleDeleteTransaction('income', idx);
-        } else if (type === 'expense') {
-          const idx = expenses.findIndex(exp => exp.id === id);
-          if (idx !== -1) handleDeleteTransaction('expense', idx);
-        }
-      }
-    }
-  });
-  // Close modals when clicking outside modal content
-  window.addEventListener('click', e => {
-    const settingsModal = document.getElementById('settingsModal');
-    const editModal = document.getElementById('editModal');
-    if (e.target === settingsModal) {
-      closeSettingsModal();
-    }
-    if (e.target === editModal) {
-      closeEditModal();
-    }
-  });
-}
 
-// Start the app on page load
-document.addEventListener('DOMContentLoaded', initApp);
+  // Submit updated Budget Category
+  editCategoryForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = Number(editCategoryId.value);
+    const name = editCategoryName.value.trim();
+    const type = editCategoryType.value;
+    let allocatedVal = parseFloat(editCategoryAmount.value);
+    if (!name || isNaN(allocatedVal)) return;
+    if (type === 'percent') {
+      if (allocatedVal < 0) allocatedVal = 0;
+      if (allocatedVal > 100) allocatedVal = 100;
+    }
+    const cat = data.categories.find(c => c.id === id);
+    if (!cat) return;
+    const oldName = cat.name;
+    // Update category data
+    cat.name = name;
+    cat.type = type;
+    cat.allocated = allocatedVal;
+    // Update category options if name changed
+    if (name !== oldName) {
+      updateCategoryOptions();
+    }
+    // Update any expense items' text that belong to this category (if name changed)
+    if (name !== oldName) {
+      data.expenses
+        .filter(exp => exp.categoryId === id)
+        .forEach(exp => {
+          const expItem = document.querySelector(`.history-item[data-type="expense"][data-id="${exp.id}"]`);
+          if (expItem) {
+            const textSpan = expItem.querySelector('.item-text');
+            const amountStr = `$${exp.amount.toFixed(2)}`;
+            textSpan.textContent = exp.desc 
+              ? `Expense (${name}): ${amountStr} - ${exp.desc}` 
+              : `Expense (${name}): ${amountStr}`;
+          }
+        });
+    }
+    // Update the category's entry in history (allocated or type might have changed)
+    updateAllCategoriesUI();
+    closeModal(editCategoryModal);
+  });
+});
