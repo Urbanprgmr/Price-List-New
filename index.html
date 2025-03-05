@@ -4,84 +4,92 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Expense & Budget Tracker</title>
-  <link rel="stylesheet" href="styles.css" />  <!-- Link to the CSS file -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
 </head>
 <body>
-  <div class="container">
+  <header>
     <h1>Expense & Budget Tracker</h1>
-    
-    <!-- Incomes Section -->
-    <div class="section incomes-section">
-      <h2>Incomes</h2>
-      <form id="income-form" class="entry-form">
-        <input type="text" id="incomeDesc" placeholder="Income description" required />
-        <input type="number" id="incomeAmount" placeholder="Amount" required />
-        <button type="submit">Add Income</button>
-      </form>
-      <table id="income-table">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="income-list">
-          <!-- Income items will be injected here by JavaScript -->
-        </tbody>
-      </table>
+    <button id="settingsBtn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
+  </header>
+  <div class="main">
+    <!-- Left section: Summary and Add form -->
+    <div class="left-container">
+      <div class="summary-container">
+        <h2 id="summaryTitle">Summary</h2>
+        <div class="summary-item">Total Income: $<span id="totalIncome">0.00</span></div>
+        <div class="summary-item">Total Expenses: $<span id="totalExpense">0.00</span></div>
+        <div class="summary-item">Balance: $<span id="balance">0.00</span></div>
+        <div id="targetInfo" class="target-info">No savings target set.</div>
+      </div>
+      <div class="add-section">
+        <div class="add-type">
+          <button id="expenseTab" class="active">Add Expense</button>
+          <button id="incomeTab">Add Income</button>
+        </div>
+        <form id="addForm">
+          <input type="number" id="amountInput" placeholder="Amount" step="0.01" min="0" required />
+          <div id="expenseFields">
+            <select id="categorySelect"></select>
+          </div>
+          <div class="form-actions">
+            <button type="submit" id="addBtn">Add Expense</button>
+            <button type="button" id="clearBtn">Clear</button>
+          </div>
+        </form>
+      </div>
+      <div id="categorySummary" class="category-summary"></div>
     </div>
-    
-    <!-- Expenses Section -->
-    <div class="section expenses-section">
-      <h2>Expenses</h2>
-      <form id="expense-form" class="entry-form">
-        <input type="text" id="expenseDesc" placeholder="Expense description" required />
-        <input type="number" id="expenseAmount" placeholder="Amount" required />
-        <select id="expenseCategory" required>
-          <option value="" disabled selected>Select category</option>
-          <!-- Category options will be populated by JavaScript -->
-        </select>
-        <button type="submit">Add Expense</button>
-      </form>
-      <table id="expense-table">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Category</th>
-          </tr>
-        </thead>
-        <tbody id="expense-list">
-          <!-- Expense items will be injected here by JavaScript -->
-        </tbody>
-      </table>
-    </div>
-    
-    <!-- Budget Categories Section -->
-    <div class="section budget-section">
-      <h2>Budget Categories</h2>
-      <form id="category-form" class="entry-form">
-        <input type="text" id="categoryName" placeholder="Category name" required />
-        <input type="number" id="categoryBudget" placeholder="Budget amount" required />
-        <button type="submit">Add Category</button>
-      </form>
-      <table id="budget-table">
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Budget</th>
-            <th>Spent</th>
-            <th>Remaining</th>
-          </tr>
-        </thead>
-        <tbody id="budget-list">
-          <!-- Budget categories will be injected here by JavaScript -->
-        </tbody>
-      </table>
+    <!-- Right section: History -->
+    <div class="right-container">
+      <h2>History</h2>
+      <div id="historyList" class="history-list"></div>
     </div>
   </div>
-  
-  <!-- Include the JavaScript file at the end of the body -->
-  <script src="app.js"></script>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <h2>Settings</h2>
+      <div class="target-section">
+        <h3>Savings Target</h3>
+        <label for="targetType">Type:</label>
+        <select id="targetType">
+          <option value="percent">Percentage of Income (%)</option>
+          <option value="fixed">Fixed Amount ($)</option>
+        </select>
+        <input type="number" id="targetValue" placeholder="Value" min="0" step="0.01" />
+        <button id="saveTargetBtn">Save Target</button>
+      </div>
+      <div class="categories-section">
+        <h3>Budget Categories</h3>
+        <div id="categorySettings"></div>
+      </div>
+      <button id="closeSettings" class="close-btn" aria-label="Close Settings">&times;</button>
+    </div>
+  </div>
+
+  <!-- Edit Transaction Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h2>Edit Transaction</h2>
+      <form id="editForm">
+        <label for="editAmount">Amount:</label>
+        <input type="number" id="editAmount" step="0.01" min="0" required />
+        <div id="editCategoryField">
+          <label for="editCategory">Category:</label>
+          <select id="editCategory"></select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="saveEditBtn">Save</button>
+          <button type="button" id="cancelEditBtn">Cancel</button>
+        </div>
+      </form>
+      <button id="closeEdit" class="close-btn" aria-label="Close Edit">&times;</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
