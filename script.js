@@ -44,11 +44,14 @@ function updateUI() {
     document.getElementById("total-expenses").textContent = totals.totalExpenses.toFixed(2);
     document.getElementById("balance").textContent = totals.balance.toFixed(2);
 
-    // Update budget category list with bar graph
+    // Update budget categories list
     const budgetsListEl = document.getElementById("budgets-list");
     budgetsListEl.innerHTML = budgetCategories.map(cat => `
         <li>
-            <div>${cat.name} - Remaining: MVR ${cat.remaining.toFixed(2)}</div>
+            <div>${cat.name}</div>
+            <div>Assigned: MVR ${cat.allocated.toFixed(2)}</div>
+            <div>Used: MVR ${cat.spent.toFixed(2)}</div>
+            <div>Remaining: MVR ${cat.remaining.toFixed(2)}</div>
             <div class="budget-bar-container">
                 <div class="budget-bar" style="width: ${Math.max((cat.remaining / cat.allocated) * 100, 0)}%"></div>
             </div>
@@ -75,35 +78,19 @@ function updateUI() {
     saveData();
 }
 
-// Add Income
-document.getElementById("income-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const amount = parseFloat(document.getElementById("income-amount").value);
-    const desc = document.getElementById("income-desc").value.trim();
-    
-    if (!isNaN(amount) && amount > 0) {
-        const newIncome = { id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() };
-        incomes.push(newIncome);
-        history.push({ ...newIncome, desc: `Income: ${desc}` });
-        saveData();
-        updateUI();
+// Edit Budget (Modify Assigned Amount)
+function editBudget(id) {
+    const budget = budgetCategories.find(b => b.id === id);
+    if (budget) {
+        const newAmount = parseFloat(prompt(`Edit budget for ${budget.name} (Current: MVR ${budget.allocated.toFixed(2)})`));
+        if (!isNaN(newAmount) && newAmount > 0) {
+            budget.allocated = newAmount;
+            budget.remaining = newAmount - budget.spent;
+            saveData();
+            updateUI();
+        }
     }
-});
-
-// Add Utility Expense
-document.getElementById("utility-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const amount = parseFloat(document.getElementById("utility-amount").value);
-    const desc = document.getElementById("utility-desc").value.trim();
-
-    if (!isNaN(amount) && amount > 0) {
-        const newExpense = { id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() };
-        utilityExpenses.push(newExpense);
-        history.push({ ...newExpense, desc: `Utility: ${desc}` });
-        saveData();
-        updateUI();
-    }
-});
+}
 
 // Add Budget Category
 document.getElementById("budget-form").addEventListener("submit", function(e) {
@@ -130,18 +117,6 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
     }
 });
 
-// Edit Budget
-function editBudget(id) {
-    const budget = budgetCategories.find(b => b.id === id);
-    if (budget) {
-        document.getElementById("budget-name").value = budget.name;
-        document.getElementById("budget-value").value = budget.value;
-        budgetCategories = budgetCategories.filter(b => b.id !== id);
-        saveData();
-        updateUI();
-    }
-}
-
 // Delete Budget
 function deleteBudget(id) {
     budgetCategories = budgetCategories.filter(b => b.id !== id);
@@ -149,41 +124,6 @@ function deleteBudget(id) {
     saveData();
     updateUI();
 }
-
-// Add Expense to Budget
-document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const budgetId = document.getElementById("expense-category").value;
-    const amount = parseFloat(document.getElementById("expense-amount").value);
-    const desc = document.getElementById("expense-desc").value.trim();
-
-    if (!isNaN(amount) && amount > 0) {
-        const budget = budgetCategories.find(b => b.id == budgetId);
-        if (budget) {
-            budget.expenses.push({ id: Date.now(), amount, desc });
-            budget.spent += amount;
-            budget.remaining -= amount;
-            history.push({ id: Date.now(), desc: `Expense: ${desc} (Budget: ${budget.name})`, amount, timestamp: new Date().toLocaleString() });
-            saveData();
-            updateUI();
-        }
-    }
-});
-
-// Delete History Entry
-function deleteHistory(id) {
-    history = history.filter(h => h.id !== id);
-    saveData();
-    updateUI();
-}
-
-// Restore Local Storage
-document.getElementById("restore-storage").addEventListener("click", function() {
-    if (confirm("Are you sure you want to restore previous data?")) {
-        loadData();
-        updateUI();
-    }
-});
 
 // Initialize App
 loadData();
