@@ -3,62 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Price List</title>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
+    <title>Expense & Budget Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .budget-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 5px solid #007bff;
+            border-radius: 5px;
+        }
+        .budget-title {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .expense-list {
+            list-style: none;
+            padding: 0;
+        }
+        .expense-list li {
+            background: #e9ecef;
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .chart-container {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Item Price List</h1>
-    <ul id="item-list"></ul>
-    <h2>Order Summary</h2>
-    <div id="order-summary"></div>
-    <h3>Total: <span id="total-price">0</span></h3>
 
-    <script>
-        // Firebase Config
-        const firebaseConfig = {
-            const firebaseConfig = {
-            apiKey: "AIzaSyCZjeMj1MY3caaiUZsKurYaASZIjhEt7p0",
-            authDomain: "pricelist-app-4b981.firebaseapp.com",
-            projectId: "pricelist-app-4b981",
-            storageBucket: "pricelist-app-4b981.firebasestorage.app",
-            messagingSenderId: "886492391937",
-            appId: "1:886492391937:web:b0d1822a99483beae12e00",
-            measurementId: "G-TT7WNG8V4M"
+<div class="container">
+    <h2>Expense & Budget Tracker</h2>
 
-        };
-        firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+    <label>Enter Income (MVR):</label>
+    <input type="number" id="incomeInput" placeholder="Enter your income">
+    <label>Enter Utility Expenses (MVR):</label>
+    <input type="number" id="utilityInput" placeholder="Enter utility expenses">
+    <button onclick="setIncome()">Set Income</button>
 
-function fetchItems() {
-    db.collection("items").get().then(snapshot => {
-        let itemsList = document.getElementById("item-list");
-        itemsList.innerHTML = ""; // Clear list before updating
+    <h3>Set Budget Percentages</h3>
+    <label>Saving Percentage (%):</label>
+    <input type="number" id="savingPercent" placeholder="e.g. 30">
+    <label>Life Expenses Percentage (%):</label>
+    <input type="number" id="lifePercent" placeholder="e.g. 40">
+    <label>Coffee Budget Percentage (%):</label>
+    <input type="number" id="coffeePercent" placeholder="e.g. 10">
+    <label>Extra Activities Percentage (%):</label>
+    <input type="number" id="extraPercent" placeholder="e.g. 20">
+    <button onclick="setBudgets()">Set Budgets</button>
 
-        snapshot.forEach(doc => {
-            let item = doc.data();
-            let listItem = document.createElement("li");
-            listItem.innerHTML = `
-                ${item.name} - $${item.price} per ${item.unit}
-                <input type="number" min="0" id="qty-${doc.id}" oninput="updateOrder('${doc.id}', ${item.price})">
-            `;
-            itemsList.appendChild(listItem);
-        });
-    }).catch(error => console.error("Error fetching items:", error));
-}
+    <div id="budgets"></div>
 
-// Fetch items when page loads
-fetchItems();
-            });
+    <div class="chart-container">
+        <canvas id="budgetChart"></canvas>
+    </div>
+</div>
 
-        // Handle Order Calculation
-        let order = {};
-        function updateOrder(itemId, price) {
-            let qty = document.getElementById(`qty-${itemId}`).value;
-            order[itemId] = qty ? parseInt(qty) * price : 0;
-            let total = Object.values(order).reduce((acc, val) => acc + val, 0);
-            document.getElementById("total-price").innerText = total.toFixed(2);
+<script>
+    let totalIncome = 0, remainingIncome = 0, utilityExpenses = 0;
+    let budgets = {
+        saving: { percentage: 0, amount: 0, spent: 0 },
+        life: { percentage: 0, amount: 0, spent: 0 },
+        coffee: { percentage: 0, amount: 0, spent: 0 },
+        extra: { percentage: 0, amount: 0, spent: 0 }
+    };
+    let budgetChart;
+
+    function setIncome() {
+        totalIncome = parseFloat(document.getElementById("incomeInput").value) || 0;
+        utilityExpenses = parseFloat(document.getElementById("utilityInput").value) || 0;
+        remainingIncome = totalIncome - utilityExpenses;
+        alert("Income and Utility Expenses Set!");
+    }
+
+    function setBudgets() {
+        let savingPercent = parseFloat(document.getElementById("savingPercent").value) || 0;
+        let lifePercent = parseFloat(document.getElementById("lifePercent").value) || 0;
+        let coffeePercent = parseFloat(document.getElementById("coffeePercent").value) || 0;
+        let extraPercent = parseFloat(document.getElementById("extraPercent").value) || 0;
+
+        let totalPercentage = savingPercent + lifePercent + coffeePercent + extraPercent;
+        if (totalPercentage !== 100) {
+            alert("Percentages must add up to 100!");
+            return;
         }
-    </script>
+
+        budgets.saving.percentage = savingPercent;
+        budgets.life.percentage = lifePercent;
+        budgets.coffee.percentage = coffeePercent;
+        budgets.extra.percentage = extraPercent;
+
+        updateBudgets();
+    }
+
+    function updateBudgets() {
+        let budgetDiv = document.getElementById("budgets");
+        budgetDiv.innerHTML = "";
+
+        for (let key in budgets) {
+            budgets[key].amount = (remainingIncome * budgets[key].percentage) / 100;
+            let remaining = budgets[key].amount - budgets[key].spent;
+            
+            budgetDiv.innerHTML += `
+                <div class="budget-section">
+                    <div class="budget-title">${key.toUpperCase()} Budget</div>
+                    Allocated: <strong>${budgets[key].amount.toFixed(2)} MVR</strong><br>
+                    Remaining: <strong>${remaining.toFixed(2)} MVR</strong><br>
+                    <label>Expense:</label>
+                    <input type="number" id="expense-${key}" placeholder="Enter expense">
+                    <button onclick="addExpense('${key}')">Add Expense</button>
+                    <ul class="expense-list" id="list-${key}"></ul>
+                </div>`;
+        }
+
+        updateChart();
+    }
+
+    function addExpense(budgetType) {
+        let expense = parseFloat(document.getElementById(`expense-${budgetType}`).value) || 0;
+        if (expense > budgets[budgetType].amount - budgets[budgetType].spent) {
+            alert("Not enough balance in this budget!");
+            return;
+        }
+
+        budgets[budgetType].spent += expense;
+        document.getElementById(`list-${budgetType}`).innerHTML += `<li>${expense} MVR</li>`;
+        updateBudgets();
+    }
+
+    function updateChart() {
+        let labels = Object.keys(budgets).map(b => b.toUpperCase());
+        let data = Object.values(budgets).map(b => b.amount);
+        let remaining = Object.values(budgets).map(b => b.amount - b.spent);
+
+        if (budgetChart) budgetChart.destroy();
+        let ctx = document.getElementById("budgetChart").getContext("2d");
+        budgetChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: "Allocated Budget", data: data, backgroundColor: "blue" },
+                    { label: "Remaining Balance", data: remaining, backgroundColor: "green" }
+                ]
+            }
+        });
+    }
+</script>
+
 </body>
 </html>
