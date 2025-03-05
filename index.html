@@ -1,103 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Expense & Budget Tracker</title>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense & Budget Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h2, h3 {
+            text-align: center;
+            color: #333;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 5px solid #007bff;
+            border-radius: 5px;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .expense-list {
+            list-style: none;
+            padding: 0;
+        }
+        .expense-list li {
+            background: #e9ecef;
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .chart-container {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Expense & Budget Tracker</h1>
-    <div class="controls">
-      <!-- Income Input Form -->
-      <form id="income-form" class="input-form">
-        <h2>Add Income</h2>
-        <input type="text" id="income-desc" placeholder="Income source (optional)" />
-        <input type="number" id="income-amount" placeholder="Amount" required min="0" step="0.01" />
-        <button type="submit">Add Income</button>
-      </form>
-      <!-- Expense Input Form -->
-      <form id="expense-form" class="input-form">
-        <h2>Add Expense</h2>
-        <input type="text" id="expense-desc" placeholder="Expense details (optional)" />
-        <input type="number" id="expense-amount" placeholder="Amount" required min="0" step="0.01" />
-        <select id="expense-category" required>
-          <option value="" disabled selected>Select Category</option>
-          <!-- Category options will be populated here -->
-        </select>
-        <button type="submit">Add Expense</button>
-      </form>
-      <!-- Budget Category Input Form -->
-      <form id="category-form" class="input-form">
-        <h2>Add Budget Category</h2>
-        <input type="text" id="category-name" placeholder="Category name" required />
-        <select id="category-type">
-          <option value="fixed">Fixed Amount</option>
-          <option value="percent">Percentage of Income</option>
-        </select>
-        <input type="number" id="category-amount" placeholder="Amount" required min="0" step="0.01" />
-        <button type="submit">Add Category</button>
-      </form>
-    </div>
-    <!-- Summary Totals -->
-    <div class="summary">
-      <p>Total Income: $<span id="total-income">0.00</span></p>
-      <p>Total Expenses: $<span id="total-expenses">0.00</span></p>
-      <p>Balance: $<span id="balance">0.00</span></p>
-    </div>
-    <!-- History List -->
-    <div class="history-section">
-      <h2>History</h2>
-      <div id="history-list" class="history-list"><!-- Entries will be appended here --></div>
-    </div>
-  </div>
 
-  <!-- Edit Income Modal -->
-  <div id="editIncomeModal" class="modal">
-    <div class="modal-content">
-      <h3>Edit Income</h3>
-      <form id="edit-income-form">
-        <input type="text" id="edit-income-desc" />
-        <input type="number" id="edit-income-amount" required min="0" step="0.01" />
-        <input type="hidden" id="edit-income-id" />
-        <button type="submit">Update</button>
-        <button type="button" class="cancel-btn" data-modal="editIncomeModal">Cancel</button>
-      </form>
-    </div>
-  </div>
-  <!-- Edit Expense Modal -->
-  <div id="editExpenseModal" class="modal">
-    <div class="modal-content">
-      <h3>Edit Expense</h3>
-      <form id="edit-expense-form">
-        <input type="text" id="edit-expense-desc" />
-        <input type="number" id="edit-expense-amount" required min="0" step="0.01" />
-        <select id="edit-expense-category"></select>
-        <input type="hidden" id="edit-expense-id" />
-        <button type="submit">Update</button>
-        <button type="button" class="cancel-btn" data-modal="editExpenseModal">Cancel</button>
-      </form>
-    </div>
-  </div>
-  <!-- Edit Budget Category Modal -->
-  <div id="editCategoryModal" class="modal">
-    <div class="modal-content">
-      <h3>Edit Budget Category</h3>
-      <form id="edit-category-form">
-        <input type="text" id="edit-category-name" required />
-        <select id="edit-category-type">
-          <option value="fixed">Fixed Amount</option>
-          <option value="percent">Percentage of Income</option>
-        </select>
-        <input type="number" id="edit-category-amount" required min="0" step="0.01" />
-        <input type="hidden" id="edit-category-id" />
-        <button type="submit">Update</button>
-        <button type="button" class="cancel-btn" data-modal="editCategoryModal">Cancel</button>
-      </form>
-    </div>
-  </div>
+<div class="container">
+    <h2>Expense & Budget Tracker</h2>
 
-  <script src="script.js"></script>
+    <!-- Income Section -->
+    <div class="section">
+        <div class="section-title">Income Management</div>
+        <label>Enter Income (MVR):</label>
+        <input type="number" id="incomeInput" placeholder="Enter amount">
+        <label>Date:</label>
+        <input type="date" id="incomeDate">
+        <button onclick="addIncome()">Add Income</button>
+        <ul id="incomeList"></ul>
+        <h3>Total Income: <span id="totalIncome">0</span> MVR</h3>
+    </div>
+
+    <!-- Utility Expenses -->
+    <div class="section">
+        <div class="section-title">Utility Expenses</div>
+        <label>Utility Name:</label>
+        <input type="text" id="utilityName" placeholder="e.g., Electricity">
+        <label>Amount (MVR):</label>
+        <input type="number" id="utilityAmount" placeholder="Enter amount">
+        <button onclick="addUtility()">Add Utility</button>
+        <ul id="utilityList"></ul>
+        <h3>Total Utility Expenses: <span id="totalUtilities">0</span> MVR</h3>
+    </div>
+
+    <!-- Budget Percentages -->
+    <div class="section">
+        <div class="section-title">Set Budget Percentages</div>
+        <label>Saving Percentage (%):</label>
+        <input type="number" id="savingPercent" placeholder="e.g., 30">
+        <label>Life Expenses Percentage (%):</label>
+        <input type="number" id="lifePercent" placeholder="e.g., 40">
+        <label>Coffee Budget Percentage (%):</label>
+        <input type="number" id="coffeePercent" placeholder="e.g., 10">
+        <label>Extra Activities Percentage (%):</label>
+        <input type="number" id="extraPercent" placeholder="e.g., 20">
+        <button onclick="setBudgets()">Set Budgets</button>
+    </div>
+
+    <div id="budgets"></div>
+
+    <h3>Remaining Balance: <span id="remainingBalance">0</span> MVR</h3>
+
+    <div class="chart-container">
+        <canvas id="budgetChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let totalIncome = 0, totalUtilities = 0;
+    let remainingIncome = 0;
+    let budgets = {
+        saving: { percentage: 0, amount: 0, spent: 0 },
+        life: { percentage: 0, amount: 0, spent: 0 },
+        coffee: { percentage: 0, amount: 0, spent: 0 },
+        extra: { percentage: 0, amount: 0, spent: 0 }
+    };
+    let budgetChart;
+
+    function addIncome() {
+        let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
+        let date = document.getElementById("incomeDate").value;
+        if (!date) {
+            alert("Please select a date.");
+            return;
+        }
+
+        totalIncome += amount;
+        document.getElementById("incomeList").innerHTML += `<li>${date}: ${amount} MVR</li>`;
+        document.getElementById("totalIncome").innerText = totalIncome;
+        updateBudgets();
+    }
+
+    function addUtility() {
+        let name = document.getElementById("utilityName").value;
+        let amount = parseFloat(document.getElementById("utilityAmount").value) || 0;
+        if (!name) {
+            alert("Please enter a utility name.");
+            return;
+        }
+
+        totalUtilities += amount;
+        document.getElementById("utilityList").innerHTML += `<li>${name}: ${amount} MVR</li>`;
+        document.getElementById("totalUtilities").innerText = totalUtilities;
+        updateBudgets();
+    }
+
+    function setBudgets() {
+        let savingPercent = parseFloat(document.getElementById("savingPercent").value) || 0;
+        let lifePercent = parseFloat(document.getElementById("lifePercent").value) || 0;
+        let coffeePercent = parseFloat(document.getElementById("coffeePercent").value) || 0;
+        let extraPercent = parseFloat(document.getElementById("extraPercent").value) || 0;
+
+        let totalPercentage = savingPercent + lifePercent + coffeePercent + extraPercent;
+        if (totalPercentage !== 100) {
+            alert("Percentages must add up to 100!");
+            return;
+        }
+
+        budgets.saving.percentage = savingPercent;
+        budgets.life.percentage = lifePercent;
+        budgets.coffee.percentage = coffeePercent;
+        budgets.extra.percentage = extraPercent;
+
+        updateBudgets();
+    }
+
+    function updateBudgets() {
+        remainingIncome = totalIncome - totalUtilities;
+        let budgetDiv = document.getElementById("budgets");
+        budgetDiv.innerHTML = "";
+
+        for (let key in budgets) {
+            budgets[key].amount = (remainingIncome * budgets[key].percentage) / 100;
+            budgetDiv.innerHTML += `<div class="section">
+                <div class="section-title">${key.toUpperCase()} Budget: ${budgets[key].amount.toFixed(2)} MVR</div>
+            </div>`;
+        }
+
+        document.getElementById("remainingBalance").innerText = remainingIncome.toFixed(2);
+        updateChart();
+    }
+
+    function updateChart() {
+        if (budgetChart) budgetChart.destroy();
+        let ctx = document.getElementById("budgetChart").getContext("2d");
+        budgetChart = new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: Object.keys(budgets),
+                datasets: [{ data: Object.values(budgets).map(b => b.amount), backgroundColor: ["blue", "green", "orange", "red"] }]
+            }
+        });
+    }
+</script>
+
 </body>
 </html>
