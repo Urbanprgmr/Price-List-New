@@ -4,89 +4,97 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Expense & Budget Tracker</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- FontAwesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
+  <div class="container">
     <h1>Expense & Budget Tracker</h1>
-    <button id="settingsBtn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
-  </header>
-  <div class="main">
-    <!-- Left section: Summary and Add form -->
-    <div class="left-container">
-      <div class="summary-container">
-        <h2 id="summaryTitle">Summary</h2>
-        <div class="summary-item">Total Income: $<span id="totalIncome">0.00</span></div>
-        <div class="summary-item">Total Expenses: $<span id="totalExpense">0.00</span></div>
-        <div class="summary-item">Balance: $<span id="balance">0.00</span></div>
-        <div id="targetInfo" class="target-info">No savings target set.</div>
-      </div>
-      <div class="add-section">
-        <div class="add-type">
-          <button id="expenseTab" class="active">Add Expense</button>
-          <button id="incomeTab">Add Income</button>
-        </div>
-        <form id="addForm">
-          <input type="number" id="amountInput" placeholder="Amount" step="0.01" min="0" required />
-          <div id="expenseFields">
-            <select id="categorySelect"></select>
-          </div>
-          <div class="form-actions">
-            <button type="submit" id="addBtn">Add Expense</button>
-            <button type="button" id="clearBtn">Clear</button>
-          </div>
-        </form>
-      </div>
-      <div id="categorySummary" class="category-summary"></div>
-    </div>
-    <!-- Right section: History -->
-    <div class="right-container">
-      <h2>History</h2>
-      <div id="historyList" class="history-list"></div>
-    </div>
-  </div>
-
-  <!-- Settings Modal -->
-  <div id="settingsModal" class="modal">
-    <div class="modal-content">
-      <h2>Settings</h2>
-      <div class="target-section">
-        <h3>Savings Target</h3>
-        <label for="targetType">Type:</label>
-        <select id="targetType">
-          <option value="percent">Percentage of Income (%)</option>
-          <option value="fixed">Fixed Amount ($)</option>
-        </select>
-        <input type="number" id="targetValue" placeholder="Value" min="0" step="0.01" />
-        <button id="saveTargetBtn">Save Target</button>
-      </div>
-      <div class="categories-section">
-        <h3>Budget Categories</h3>
-        <div id="categorySettings"></div>
-      </div>
-      <button id="closeSettings" class="close-btn" aria-label="Close Settings">&times;</button>
-    </div>
-  </div>
-
-  <!-- Edit Transaction Modal -->
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <h2>Edit Transaction</h2>
-      <form id="editForm">
-        <label for="editAmount">Amount:</label>
-        <input type="number" id="editAmount" step="0.01" min="0" required />
-        <div id="editCategoryField">
-          <label for="editCategory">Category:</label>
-          <select id="editCategory"></select>
-        </div>
-        <div class="form-actions">
-          <button type="submit" id="saveEditBtn">Save</button>
-          <button type="button" id="cancelEditBtn">Cancel</button>
-        </div>
+    <div class="controls">
+      <!-- Income Input Form -->
+      <form id="income-form" class="input-form">
+        <h2>Add Income</h2>
+        <input type="text" id="income-desc" placeholder="Income source (optional)" />
+        <input type="number" id="income-amount" placeholder="Amount" required min="0" step="0.01" />
+        <button type="submit">Add Income</button>
       </form>
-      <button id="closeEdit" class="close-btn" aria-label="Close Edit">&times;</button>
+      <!-- Expense Input Form -->
+      <form id="expense-form" class="input-form">
+        <h2>Add Expense</h2>
+        <input type="text" id="expense-desc" placeholder="Expense details (optional)" />
+        <input type="number" id="expense-amount" placeholder="Amount" required min="0" step="0.01" />
+        <select id="expense-category" required>
+          <option value="" disabled selected>Select Category</option>
+          <!-- Category options will be populated here -->
+        </select>
+        <button type="submit">Add Expense</button>
+      </form>
+      <!-- Budget Category Input Form -->
+      <form id="category-form" class="input-form">
+        <h2>Add Budget Category</h2>
+        <input type="text" id="category-name" placeholder="Category name" required />
+        <select id="category-type">
+          <option value="fixed">Fixed Amount</option>
+          <option value="percent">Percentage of Income</option>
+        </select>
+        <input type="number" id="category-amount" placeholder="Amount" required min="0" step="0.01" />
+        <button type="submit">Add Category</button>
+      </form>
+    </div>
+    <!-- Summary Totals -->
+    <div class="summary">
+      <p>Total Income: $<span id="total-income">0.00</span></p>
+      <p>Total Expenses: $<span id="total-expenses">0.00</span></p>
+      <p>Balance: $<span id="balance">0.00</span></p>
+    </div>
+    <!-- History List -->
+    <div class="history-section">
+      <h2>History</h2>
+      <div id="history-list" class="history-list"><!-- Entries will be appended here --></div>
+    </div>
+  </div>
+
+  <!-- Edit Income Modal -->
+  <div id="editIncomeModal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Income</h3>
+      <form id="edit-income-form">
+        <input type="text" id="edit-income-desc" />
+        <input type="number" id="edit-income-amount" required min="0" step="0.01" />
+        <input type="hidden" id="edit-income-id" />
+        <button type="submit">Update</button>
+        <button type="button" class="cancel-btn" data-modal="editIncomeModal">Cancel</button>
+      </form>
+    </div>
+  </div>
+  <!-- Edit Expense Modal -->
+  <div id="editExpenseModal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Expense</h3>
+      <form id="edit-expense-form">
+        <input type="text" id="edit-expense-desc" />
+        <input type="number" id="edit-expense-amount" required min="0" step="0.01" />
+        <select id="edit-expense-category"></select>
+        <input type="hidden" id="edit-expense-id" />
+        <button type="submit">Update</button>
+        <button type="button" class="cancel-btn" data-modal="editExpenseModal">Cancel</button>
+      </form>
+    </div>
+  </div>
+  <!-- Edit Budget Category Modal -->
+  <div id="editCategoryModal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Budget Category</h3>
+      <form id="edit-category-form">
+        <input type="text" id="edit-category-name" required />
+        <select id="edit-category-type">
+          <option value="fixed">Fixed Amount</option>
+          <option value="percent">Percentage of Income</option>
+        </select>
+        <input type="number" id="edit-category-amount" required min="0" step="0.01" />
+        <input type="hidden" id="edit-category-id" />
+        <button type="submit">Update</button>
+        <button type="button" class="cancel-btn" data-modal="editCategoryModal">Cancel</button>
+      </form>
     </div>
   </div>
 
