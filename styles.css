@@ -1,125 +1,324 @@
-/* Root variables for theme colors and old accent color */
-:root {
-  --accent-color: #4caf50;      /* Accent color (from previous style, e.g., green) */
-  --bg-color: #121212;          /* Dark background for entire app */
-  --section-bg: #1e1e1e;        /* Slightly lighter background for section cards */
-  --text-color: #e0e0e0;        /* Primary light text color */
-  --income-color: #4caf50;      /* Color for income amounts (green) */
-  --expense-color: #f44336;     /* Color for expense amounts (red) */
-}
-
-/* Global Styles */
+/* Dark Theme Expense & Budget Tracker CSS */
 body {
-  margin: 0;
+  background-color: #121212;
+  color: #e0e0e0;
   font-family: Arial, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  transition: background-color 0.3s, color 0.3s;
+  margin: 0;
+  padding: 0;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #1f1f1f;
+}
+header h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+#settingsBtn {
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+#settingsBtn:hover {
+  color: #ffffff;
 }
 
-/* Container to center content and add padding */
-.container {
-  max-width: 800px;
-  margin: auto;
+/* Layout containers */
+.main {
   padding: 1rem;
 }
-
-/* Headings */
-h1 {
-  text-align: center;
-  margin-bottom: 1rem;
+.left-container, .right-container {
+  margin-bottom: 2rem;
 }
-h2 {
-  font-size: 1.2em;
-  margin-bottom: 0.5rem;
-  color: var(--accent-color);  /* Use accent color for section titles */
+@media (min-width: 768px) {
+  .main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .left-container {
+    width: 35%;
+    margin-right: 2%;
+  }
+  .right-container {
+    width: 63%;
+  }
 }
 
-/* Section card styling */
-.section {
-  background: var(--section-bg);
+/* Summary section */
+.summary-container {
+  background-color: #242424;
   padding: 1rem;
   border-radius: 5px;
-  margin-bottom: 2rem;
-  /* Preserve familiar spacing and grouping from old UI */
+  margin-bottom: 1.5rem;
+}
+.summary-container h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+}
+.summary-item {
+  margin: 0.3rem 0;
+}
+.summary-item span {
+  font-weight: bold;
+}
+.negative {
+  color: #f44336;
+}
+.target-info {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+.target-met {
+  color: #4caf50;
+}
+.target-not-met {
+  color: #ff9800;
 }
 
-/* Forms */
-.entry-form {
+/* Add transaction form */
+.add-section {
+  background-color: #1f1f1f;
+  padding: 1rem;
+  border-radius: 5px;
+}
+.add-type {
+  display: flex;
   margin-bottom: 1rem;
 }
-.entry-form input, .entry-form select {
-  padding: 0.4em 0.6em;
-  margin-right: 0.5em;
-  border: 1px solid #555;
-  border-radius: 3px;
-  background: #2a2a2a;    /* Dark input background for dark theme */
-  color: #fff;
-}
-.entry-form input::placeholder, .entry-form select {
-  color: #aaa;
-}
-.entry-form input:focus, .entry-form select:focus {
-  outline: none;
-  border-color: var(--accent-color);
-}
-
-/* Submit Button */
-.entry-form button[type="submit"] {
-  background: var(--accent-color);
-  color: #fff;
+.add-type button {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
   border: none;
-  padding: 0.5em 1em;
-  border-radius: 3px;
   cursor: pointer;
-  transition: background 0.3s;
+  background: #424242;
+  color: #e0e0e0;
 }
-.entry-form button[type="submit"]:hover {
-  background: #388e3c; /* Darker shade on hover (enhancing old button style with new theme) */
+.add-type button.active {
+  background: #2196f3;
+  color: #fff;
+}
+.add-type button:not(.active):hover {
+  background: #4f4f4f;
+}
+#addForm {
+  display: flex;
+  flex-direction: column;
+}
+#amountInput, #targetValue, #newCategoryName, #newCategoryBudget, #editAmount {
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+#amountInput::placeholder, 
+#targetValue::placeholder, 
+#newCategoryName::placeholder, 
+#newCategoryBudget::placeholder {
+  color: #999;
+}
+#categorySelect, #editCategory, #targetType {
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.form-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #424242;
+  color: #fff;
+}
+#addBtn, #saveEditBtn, #saveTargetBtn {
+  background: #2196f3;
+}
+#addBtn:hover, #saveEditBtn:hover, #saveTargetBtn:hover {
+  background: #1e88e5;
+}
+#clearBtn, #cancelEditBtn {
+  background: #616161;
+}
+#clearBtn:hover, #cancelEditBtn:hover {
+  background: #757575;
 }
 
-/* Tables */
-table {
+/* History list */
+.history-list {
+  /* By default, allow history list to grow; you can enable scrolling if needed */
+  /* max-height: 70vh; overflow-y: auto; */
+}
+.trans-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #333;
+}
+.trans-item:last-child {
+  border-bottom: none;
+}
+.trans-amount {
+  font-weight: bold;
+  margin-right: 1rem;
+}
+.income-item .trans-amount {
+  color: #4caf50;
+}
+.expense-item .trans-amount {
+  color: #f44336;
+}
+.trans-category {
+  margin-right: auto;
+}
+.trans-date {
+  font-size: 0.9rem;
+  color: #bbb;
+}
+.trans-actions button {
+  background: none;
+  border: none;
+  color: #2196f3;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+.trans-actions button:hover {
+  text-decoration: underline;
+}
+
+/* Category summary section (left panel) */
+.category-summary {
+  margin-top: 1rem;
+}
+.cat-summary-row {
+  margin-bottom: 1rem;
+}
+.cat-label {
+  display: inline-block;
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+.cat-info {
+  display: inline-block;
+  color: #ccc;
+}
+.cat-bar-container {
+  background: #555;
+  height: 8px;
+  width: 100%;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%;
+  background: #03a9f4;
+}
+.cat-bar-fill.over-budget {
+  background: #f44336;
+}
+
+/* Modal (Settings & Edit) styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.modal.show {
+  opacity: 1;
+}
+.modal-content {
+  background: #2b2b2b;
+  padding: 1rem 2rem;
+  border-radius: 5px;
+  position: relative;
+  max-width: 500px;
+  width: 90%;
+  margin: 1rem;
+}
+.modal-content h2 {
+  margin-top: 0;
+}
+.target-section, .categories-section {
+  margin-bottom: 1.5rem;
+}
+.target-section label {
+  margin-right: 0.5rem;
+}
+.categories-section h3 {
+  margin: 0 0 0.5rem;
+}
+.category-table {
   width: 100%;
   border-collapse: collapse;
 }
-th, td {
+.category-table th, .category-table td {
   text-align: left;
-  padding: 0.5em 0.6em;
+  padding: 0.5rem;
 }
-th {
-  font-weight: 600;
-  border-bottom: 2px solid #444;
+.category-table thead {
+  border-bottom: 1px solid #555;
 }
-tbody tr:nth-child(even) {
-  background: rgba(255,255,255,0.05); /* Subtle alternate row highlight for readability */
+.category-table tbody tr {
+  border-bottom: 1px solid #444;
+}
+.category-table tbody tr:last-child {
+  border-bottom: none;
+}
+/* New category form in settings (flex layout for inputs) */
+.new-category-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.new-category-form input {
+  flex: 1;
+  margin-bottom: 0.5rem;
+}
+.new-category-form button {
+  padding: 0.5rem 1rem;
 }
 
-/* Amount text coloring for visual clarity (preserving old color-coding) */
-.income-amount {
-  color: var(--income-color);
+/* Modal close buttons (X) */
+.close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  cursor: pointer;
 }
-.expense-amount {
-  color: var(--expense-color);
-}
-
-/* Highlight for categories that are over budget */
-.over-budget {
-  color: var(--expense-color); /* use expense/red color to highlight overspent */
-  font-weight: bold;
-}
-
-/* Animation for new entries (fade-in effect) */
-.fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.close-btn:hover {
+  color: #fff;
 }
