@@ -41,6 +41,12 @@ function updateUI() {
             </li>
         `).join("");
 
+    // Update budget category selection in expense form
+    const expenseCategorySelect = document.getElementById("expense-category");
+    expenseCategorySelect.innerHTML = budgetCategories.length ? 
+        budgetCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join("") : 
+        `<option disabled selected>No budgets available</option>`;
+
     saveData();
 }
 
@@ -86,7 +92,10 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
             id: Date.now(),
             type: "Budget",
             name,
-            amount: value,
+            allocated: value,
+            spent: 0,
+            remaining: value,
+            expenses: [],
             desc: `Budget Created: ${name}`,
             timestamp: new Date().toLocaleString()
         };
@@ -94,6 +103,27 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
         history.push(newBudget);
         saveData();
         updateUI();
+    }
+});
+
+// Add Expense to Budget
+document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const budgetId = document.getElementById("expense-category").value;
+    const amount = parseFloat(document.getElementById("expense-amount").value);
+    const desc = document.getElementById("expense-desc").value.trim();
+
+    if (!isNaN(amount) && amount > 0) {
+        const budget = budgetCategories.find(b => b.id == budgetId);
+        if (budget) {
+            const newExpense = { id: Date.now(), type: "Budget Expense", amount, desc, timestamp: new Date().toLocaleString() };
+            budget.expenses.push(newExpense);
+            budget.spent += amount;
+            budget.remaining -= amount;
+            history.push({ ...newExpense, desc: `Expense in ${budget.name}: ${desc}` });
+            saveData();
+            updateUI();
+        }
     }
 });
 
