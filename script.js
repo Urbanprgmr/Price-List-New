@@ -66,6 +66,7 @@ function updateUI() {
     budgetsListEl.innerHTML = budgetCategories.map(cat => `
         <li>
             ${cat.name} - Allocated: MVR ${cat.allocated.toFixed(2)}, Spent: MVR ${cat.spent.toFixed(2)}, Remaining: MVR ${cat.remaining.toFixed(2)}
+            <button class="small-btn" onclick="editBudget(${cat.id})">✏</button>
             <button class="small-btn" onclick="deleteBudget(${cat.id})">🗑</button>
         </li>
     `).join("");
@@ -130,15 +131,34 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
             name,
             type: isPercent ? "percent" : "fixed",
             value,
-            allocated: 0,
+            allocated: value,
             spent: 0,
-            remaining: 0,
+            remaining: value,
             expenses: []
         });
         saveData();
         updateUI();
     }
 });
+
+// Edit Budget
+function editBudget(id) {
+    const budget = budgetCategories.find(b => b.id === id);
+    if (budget) {
+        document.getElementById("budget-name").value = budget.name;
+        document.getElementById("budget-value").value = budget.value;
+        budgetCategories = budgetCategories.filter(b => b.id !== id);
+        saveData();
+        updateUI();
+    }
+}
+
+// Delete Budget
+function deleteBudget(id) {
+    budgetCategories = budgetCategories.filter(b => b.id !== id);
+    saveData();
+    updateUI();
+}
 
 // Add Expense to Budget
 document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
