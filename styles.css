@@ -2,7 +2,7 @@
 body {
   background-color: #121212;
   color: #ffffff;
-  font-family: 'Arial', sans-serif;
+  font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
@@ -89,32 +89,8 @@ button:hover {
   margin: 10px 0;
   border-radius: 5px;
   display: flex;
-  justify-content: space-between;
-}
-
-/* History Section */
-.history-section {
-  margin-bottom: 30px;
-}
-.history-section ul {
-  list-style: none;
-  padding: 0;
-}
-.history-section li {
-  background: #2a2a2a;
-  margin: 5px 0;
-  padding: 10px;
-  border-radius: 5px;
-  display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-}
-.history-section li button {
-  background: #d32f2f;
-  color: white;
-}
-.history-section li button:hover {
-  background: #b71c1c;
 }
 
 /* Budget Progress Bar */
@@ -129,12 +105,55 @@ button:hover {
 .budget-bar {
   height: 100%;
   transition: width 0.4s ease-in-out;
-}
-.budget-bar.green {
   background: #4caf50;
 }
-.budget-bar.red {
+.budget-bar.low {
   background: #f44336;
+}
+
+/* Buttons for Budget Categories */
+.tiny-btn {
+  font-size: 12px;
+  padding: 5px;
+  margin-top: 5px;
+  cursor: pointer;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 3px;
+}
+.tiny-btn:hover {
+  background: #b71c1c;
+}
+
+/* Unified History Section */
+#history {
+  margin-top: 30px;
+}
+#history ul {
+  list-style: none;
+  padding: 0;
+}
+#history li {
+  background: #2a2a2a;
+  margin: 5px 0;
+  padding: 10px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#history li button {
+  background: #d32f2f;
+  color: white;
+  font-size: 12px;
+  padding: 5px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#history li button:hover {
+  background: #b71c1c;
 }
 
 /* Animations */
