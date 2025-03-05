@@ -50,15 +50,31 @@
             font-weight: bold;
             color: #007bff;
         }
-        .expense-list {
+        .list {
             list-style: none;
             padding: 0;
         }
-        .expense-list li {
+        .list li {
             background: #e9ecef;
             margin: 5px 0;
             padding: 8px;
             border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .delete-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .edit-btn {
+            background: orange;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
         }
         .chart-container {
             margin-top: 20px;
@@ -74,11 +90,11 @@
     <div class="section">
         <div class="section-title">Income Management</div>
         <label>Enter Income (MVR):</label>
-        <input type="number" id="incomeInput" placeholder="Enter amount">
+        <input type="number" id="incomeInput">
         <label>Date:</label>
         <input type="date" id="incomeDate">
         <button onclick="addIncome()">Add Income</button>
-        <ul id="incomeList"></ul>
+        <ul class="list" id="incomeList"></ul>
         <h3>Total Income: <span id="totalIncome">0</span> MVR</h3>
     </div>
 
@@ -86,11 +102,11 @@
     <div class="section">
         <div class="section-title">Utility Expenses</div>
         <label>Utility Name:</label>
-        <input type="text" id="utilityName" placeholder="e.g., Electricity">
+        <input type="text" id="utilityName">
         <label>Amount (MVR):</label>
-        <input type="number" id="utilityAmount" placeholder="Enter amount">
+        <input type="number" id="utilityAmount">
         <button onclick="addUtility()">Add Utility</button>
-        <ul id="utilityList"></ul>
+        <ul class="list" id="utilityList"></ul>
         <h3>Total Utility Expenses: <span id="totalUtilities">0</span> MVR</h3>
     </div>
 
@@ -98,13 +114,13 @@
     <div class="section">
         <div class="section-title">Set Budget Percentages</div>
         <label>Saving Percentage (%):</label>
-        <input type="number" id="savingPercent" placeholder="e.g., 30">
+        <input type="number" id="savingPercent">
         <label>Life Expenses Percentage (%):</label>
-        <input type="number" id="lifePercent" placeholder="e.g., 40">
+        <input type="number" id="lifePercent">
         <label>Coffee Budget Percentage (%):</label>
-        <input type="number" id="coffeePercent" placeholder="e.g., 10">
+        <input type="number" id="coffeePercent">
         <label>Extra Activities Percentage (%):</label>
-        <input type="number" id="extraPercent" placeholder="e.g., 20">
+        <input type="number" id="extraPercent">
         <button onclick="setBudgets()">Set Budgets</button>
     </div>
 
@@ -120,75 +136,73 @@
 <script>
     let totalIncome = 0, totalUtilities = 0;
     let remainingIncome = 0;
-    let budgets = {
-        saving: { percentage: 0, amount: 0, spent: 0 },
-        life: { percentage: 0, amount: 0, spent: 0 },
-        coffee: { percentage: 0, amount: 0, spent: 0 },
-        extra: { percentage: 0, amount: 0, spent: 0 }
-    };
+    let budgets = { saving: 0, life: 0, coffee: 0, extra: 0 };
     let budgetChart;
 
     function addIncome() {
         let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
         let date = document.getElementById("incomeDate").value;
-        if (!date) {
-            alert("Please select a date.");
-            return;
-        }
+        if (!date) return alert("Please select a date.");
 
         totalIncome += amount;
-        document.getElementById("incomeList").innerHTML += `<li>${date}: ${amount} MVR</li>`;
+        let incomeList = document.getElementById("incomeList");
+        let li = document.createElement("li");
+        li.innerHTML = `${date}: ${amount} MVR 
+            <button class="edit-btn" onclick="editIncome(this, ${amount})">Edit</button> 
+            <button class="delete-btn" onclick="deleteIncome(this, ${amount})">Delete</button>`;
+        incomeList.appendChild(li);
+
         document.getElementById("totalIncome").innerText = totalIncome;
+        updateBudgets();
+    }
+
+    function editIncome(button, oldAmount) {
+        let newAmount = prompt("Enter new amount:", oldAmount);
+        if (newAmount !== null) {
+            totalIncome += parseFloat(newAmount) - oldAmount;
+            document.getElementById("totalIncome").innerText = totalIncome;
+            button.parentElement.innerHTML = button.parentElement.innerHTML.replace(oldAmount, newAmount);
+            updateBudgets();
+        }
+    }
+
+    function deleteIncome(button, amount) {
+        totalIncome -= amount;
+        document.getElementById("totalIncome").innerText = totalIncome;
+        button.parentElement.remove();
         updateBudgets();
     }
 
     function addUtility() {
         let name = document.getElementById("utilityName").value;
         let amount = parseFloat(document.getElementById("utilityAmount").value) || 0;
-        if (!name) {
-            alert("Please enter a utility name.");
-            return;
-        }
+        if (!name) return alert("Enter utility name.");
 
         totalUtilities += amount;
-        document.getElementById("utilityList").innerHTML += `<li>${name}: ${amount} MVR</li>`;
+        let utilityList = document.getElementById("utilityList");
+        let li = document.createElement("li");
+        li.innerHTML = `${name}: ${amount} MVR 
+            <button class="delete-btn" onclick="deleteUtility(this, ${amount})">Delete</button>`;
+        utilityList.appendChild(li);
+
         document.getElementById("totalUtilities").innerText = totalUtilities;
         updateBudgets();
     }
 
-    function setBudgets() {
-        let savingPercent = parseFloat(document.getElementById("savingPercent").value) || 0;
-        let lifePercent = parseFloat(document.getElementById("lifePercent").value) || 0;
-        let coffeePercent = parseFloat(document.getElementById("coffeePercent").value) || 0;
-        let extraPercent = parseFloat(document.getElementById("extraPercent").value) || 0;
-
-        let totalPercentage = savingPercent + lifePercent + coffeePercent + extraPercent;
-        if (totalPercentage !== 100) {
-            alert("Percentages must add up to 100!");
-            return;
-        }
-
-        budgets.saving.percentage = savingPercent;
-        budgets.life.percentage = lifePercent;
-        budgets.coffee.percentage = coffeePercent;
-        budgets.extra.percentage = extraPercent;
-
+    function deleteUtility(button, amount) {
+        totalUtilities -= amount;
+        document.getElementById("totalUtilities").innerText = totalUtilities;
+        button.parentElement.remove();
         updateBudgets();
     }
 
-    function updateBudgets() {
-        remainingIncome = totalIncome - totalUtilities;
-        let budgetDiv = document.getElementById("budgets");
-        budgetDiv.innerHTML = "";
-
-        for (let key in budgets) {
-            budgets[key].amount = (remainingIncome * budgets[key].percentage) / 100;
-            budgetDiv.innerHTML += `<div class="section">
-                <div class="section-title">${key.toUpperCase()} Budget: ${budgets[key].amount.toFixed(2)} MVR</div>
-            </div>`;
-        }
-
-        document.getElementById("remainingBalance").innerText = remainingIncome.toFixed(2);
+    function setBudgets() {
+        let total = totalIncome - totalUtilities;
+        budgets.saving = total * (document.getElementById("savingPercent").value / 100);
+        budgets.life = total * (document.getElementById("lifePercent").value / 100);
+        budgets.coffee = total * (document.getElementById("coffeePercent").value / 100);
+        budgets.extra = total * (document.getElementById("extraPercent").value / 100);
+        document.getElementById("remainingBalance").innerText = total;
         updateChart();
     }
 
@@ -199,7 +213,7 @@
             type: "pie",
             data: {
                 labels: Object.keys(budgets),
-                datasets: [{ data: Object.values(budgets).map(b => b.amount), backgroundColor: ["blue", "green", "orange", "red"] }]
+                datasets: [{ data: Object.values(budgets), backgroundColor: ["blue", "green", "orange", "red"] }]
             }
         });
     }
