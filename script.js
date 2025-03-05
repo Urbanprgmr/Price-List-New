@@ -3,15 +3,17 @@ const LS_PREFIX = "BudgetApp_";
 const LS_INCOMES = LS_PREFIX + "incomes";
 const LS_UTILITIES = LS_PREFIX + "utilities";
 const LS_BUDGETS = LS_PREFIX + "budgets";
+const LS_HISTORY = LS_PREFIX + "history"; // New unified history
 
 // Data Arrays
-let incomes = [], utilityExpenses = [], budgetCategories = [];
+let incomes = [], utilityExpenses = [], budgetCategories = [], history = [];
 
 // Load Data
 function loadData() {
     incomes = JSON.parse(localStorage.getItem(LS_INCOMES)) || [];
     utilityExpenses = JSON.parse(localStorage.getItem(LS_UTILITIES)) || [];
     budgetCategories = JSON.parse(localStorage.getItem(LS_BUDGETS)) || [];
+    history = JSON.parse(localStorage.getItem(LS_HISTORY)) || [];
 }
 
 // Save Data
@@ -19,6 +21,7 @@ function saveData() {
     localStorage.setItem(LS_INCOMES, JSON.stringify(incomes));
     localStorage.setItem(LS_UTILITIES, JSON.stringify(utilityExpenses));
     localStorage.setItem(LS_BUDGETS, JSON.stringify(budgetCategories));
+    localStorage.setItem(LS_HISTORY, JSON.stringify(history));
 }
 
 // Recalculate Totals
@@ -41,31 +44,14 @@ function updateUI() {
     document.getElementById("total-expenses").textContent = totals.totalExpenses.toFixed(2);
     document.getElementById("balance").textContent = totals.balance.toFixed(2);
 
-    // Update income list
-    const incomeListEl = document.getElementById("income-list");
-    incomeListEl.innerHTML = incomes.map(inc => `
-        <li>
-            ${inc.desc ? inc.desc + " - " : ""}MVR ${inc.amount.toFixed(2)} 
-            (Added: ${inc.timestamp})
-            <button class="small-btn" onclick="deleteIncome(${inc.id})">🗑</button>
-        </li>
-    `).join("");
-
-    // Update utility list
-    const utilityListEl = document.getElementById("utility-list");
-    utilityListEl.innerHTML = utilityExpenses.map(exp => `
-        <li>
-            ${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)} 
-            (Added: ${exp.timestamp})
-            <button class="small-btn" onclick="deleteUtility(${exp.id})">🗑</button>
-        </li>
-    `).join("");
-
-    // Update budget categories list
+    // Update budget category list with bar graph
     const budgetsListEl = document.getElementById("budgets-list");
     budgetsListEl.innerHTML = budgetCategories.map(cat => `
         <li>
-            ${cat.name} - Allocated: MVR ${cat.allocated.toFixed(2)}, Spent: MVR ${cat.spent.toFixed(2)}, Remaining: MVR ${cat.remaining.toFixed(2)}
+            <div>${cat.name} - Remaining: MVR ${cat.remaining.toFixed(2)}</div>
+            <div class="budget-bar-container">
+                <div class="budget-bar" style="width: ${Math.max((cat.remaining / cat.allocated) * 100, 0)}%"></div>
+            </div>
             <button class="small-btn" onclick="editBudget(${cat.id})">✏</button>
             <button class="small-btn" onclick="deleteBudget(${cat.id})">🗑</button>
         </li>
@@ -75,6 +61,15 @@ function updateUI() {
     const expenseCategorySelect = document.getElementById("expense-category");
     expenseCategorySelect.innerHTML = budgetCategories.map(cat => `
         <option value="${cat.id}">${cat.name}</option>
+    `).join("");
+
+    // Update unified history
+    const historyListEl = document.getElementById("history-list");
+    historyListEl.innerHTML = history.map(entry => `
+        <li>
+            ${entry.timestamp} - ${entry.desc} - MVR ${entry.amount.toFixed(2)}
+            <button class="small-btn" onclick="deleteHistory(${entry.id})">🗑</button>
+        </li>
     `).join("");
 
     saveData();
@@ -87,17 +82,13 @@ document.getElementById("income-form").addEventListener("submit", function(e) {
     const desc = document.getElementById("income-desc").value.trim();
     
     if (!isNaN(amount) && amount > 0) {
-        incomes.push({ id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() });
+        const newIncome = { id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() };
+        incomes.push(newIncome);
+        history.push({ ...newIncome, desc: `Income: ${desc}` });
         saveData();
         updateUI();
     }
 });
-
-// Delete Income
-function deleteIncome(id) {
-    incomes = incomes.filter(i => i.id !== id);
-    updateUI();
-}
 
 // Add Utility Expense
 document.getElementById("utility-form").addEventListener("submit", function(e) {
@@ -106,17 +97,13 @@ document.getElementById("utility-form").addEventListener("submit", function(e) {
     const desc = document.getElementById("utility-desc").value.trim();
 
     if (!isNaN(amount) && amount > 0) {
-        utilityExpenses.push({ id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() });
+        const newExpense = { id: Date.now(), amount, desc, timestamp: new Date().toLocaleString() };
+        utilityExpenses.push(newExpense);
+        history.push({ ...newExpense, desc: `Utility: ${desc}` });
         saveData();
         updateUI();
     }
 });
-
-// Delete Utility Expense
-function deleteUtility(id) {
-    utilityExpenses = utilityExpenses.filter(x => x.id !== id);
-    updateUI();
-}
 
 // Add Budget Category
 document.getElementById("budget-form").addEventListener("submit", function(e) {
@@ -126,7 +113,7 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
     const value = parseFloat(document.getElementById("budget-value").value);
 
     if (!isNaN(value) && value > 0) {
-        budgetCategories.push({
+        const newBudget = {
             id: Date.now(),
             name,
             type: isPercent ? "percent" : "fixed",
@@ -135,30 +122,13 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
             spent: 0,
             remaining: value,
             expenses: []
-        });
+        };
+        budgetCategories.push(newBudget);
+        history.push({ id: newBudget.id, desc: `Budget Created: ${name}`, amount: value, timestamp: new Date().toLocaleString() });
         saveData();
         updateUI();
     }
 });
-
-// Edit Budget
-function editBudget(id) {
-    const budget = budgetCategories.find(b => b.id === id);
-    if (budget) {
-        document.getElementById("budget-name").value = budget.name;
-        document.getElementById("budget-value").value = budget.value;
-        budgetCategories = budgetCategories.filter(b => b.id !== id);
-        saveData();
-        updateUI();
-    }
-}
-
-// Delete Budget
-function deleteBudget(id) {
-    budgetCategories = budgetCategories.filter(b => b.id !== id);
-    saveData();
-    updateUI();
-}
 
 // Add Expense to Budget
 document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
@@ -173,11 +143,19 @@ document.getElementById("budget-expense-form").addEventListener("submit", functi
             budget.expenses.push({ id: Date.now(), amount, desc });
             budget.spent += amount;
             budget.remaining -= amount;
+            history.push({ id: Date.now(), desc: `Expense: ${desc} (Budget: ${budget.name})`, amount, timestamp: new Date().toLocaleString() });
             saveData();
             updateUI();
         }
     }
 });
+
+// Delete History Entry
+function deleteHistory(id) {
+    history = history.filter(h => h.id !== id);
+    saveData();
+    updateUI();
+}
 
 // Restore Local Storage
 document.getElementById("restore-storage").addEventListener("click", function() {
