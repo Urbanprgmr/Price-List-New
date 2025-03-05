@@ -13,14 +13,14 @@
             padding: 20px;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
             background: #fff;
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
         }
-        h2 {
+        h2, h3 {
             text-align: center;
             color: #333;
         }
@@ -39,14 +39,14 @@
         button:hover {
             background: #218838;
         }
-        .budget-section {
+        .section {
             margin-top: 20px;
             padding: 15px;
             background: #f8f9fa;
             border-left: 5px solid #007bff;
             border-radius: 5px;
         }
-        .budget-title {
+        .section-title {
             font-weight: bold;
             color: #007bff;
         }
@@ -70,24 +70,47 @@
 <div class="container">
     <h2>Expense & Budget Tracker</h2>
 
-    <label>Enter Income (MVR):</label>
-    <input type="number" id="incomeInput" placeholder="Enter your income">
-    <label>Enter Utility Expenses (MVR):</label>
-    <input type="number" id="utilityInput" placeholder="Enter utility expenses">
-    <button onclick="setIncome()">Set Income</button>
+    <!-- Income Section -->
+    <div class="section">
+        <div class="section-title">Income Management</div>
+        <label>Enter Income (MVR):</label>
+        <input type="number" id="incomeInput" placeholder="Enter amount">
+        <label>Date:</label>
+        <input type="date" id="incomeDate">
+        <button onclick="addIncome()">Add Income</button>
+        <ul id="incomeList"></ul>
+        <h3>Total Income: <span id="totalIncome">0</span> MVR</h3>
+    </div>
 
-    <h3>Set Budget Percentages</h3>
-    <label>Saving Percentage (%):</label>
-    <input type="number" id="savingPercent" placeholder="e.g. 30">
-    <label>Life Expenses Percentage (%):</label>
-    <input type="number" id="lifePercent" placeholder="e.g. 40">
-    <label>Coffee Budget Percentage (%):</label>
-    <input type="number" id="coffeePercent" placeholder="e.g. 10">
-    <label>Extra Activities Percentage (%):</label>
-    <input type="number" id="extraPercent" placeholder="e.g. 20">
-    <button onclick="setBudgets()">Set Budgets</button>
+    <!-- Utility Expenses -->
+    <div class="section">
+        <div class="section-title">Utility Expenses</div>
+        <label>Utility Name:</label>
+        <input type="text" id="utilityName" placeholder="e.g., Electricity">
+        <label>Amount (MVR):</label>
+        <input type="number" id="utilityAmount" placeholder="Enter amount">
+        <button onclick="addUtility()">Add Utility</button>
+        <ul id="utilityList"></ul>
+        <h3>Total Utility Expenses: <span id="totalUtilities">0</span> MVR</h3>
+    </div>
+
+    <!-- Budget Percentages -->
+    <div class="section">
+        <div class="section-title">Set Budget Percentages</div>
+        <label>Saving Percentage (%):</label>
+        <input type="number" id="savingPercent" placeholder="e.g., 30">
+        <label>Life Expenses Percentage (%):</label>
+        <input type="number" id="lifePercent" placeholder="e.g., 40">
+        <label>Coffee Budget Percentage (%):</label>
+        <input type="number" id="coffeePercent" placeholder="e.g., 10">
+        <label>Extra Activities Percentage (%):</label>
+        <input type="number" id="extraPercent" placeholder="e.g., 20">
+        <button onclick="setBudgets()">Set Budgets</button>
+    </div>
 
     <div id="budgets"></div>
+
+    <h3>Remaining Balance: <span id="remainingBalance">0</span> MVR</h3>
 
     <div class="chart-container">
         <canvas id="budgetChart"></canvas>
@@ -95,7 +118,8 @@
 </div>
 
 <script>
-    let totalIncome = 0, remainingIncome = 0, utilityExpenses = 0;
+    let totalIncome = 0, totalUtilities = 0;
+    let remainingIncome = 0;
     let budgets = {
         saving: { percentage: 0, amount: 0, spent: 0 },
         life: { percentage: 0, amount: 0, spent: 0 },
@@ -104,11 +128,32 @@
     };
     let budgetChart;
 
-    function setIncome() {
-        totalIncome = parseFloat(document.getElementById("incomeInput").value) || 0;
-        utilityExpenses = parseFloat(document.getElementById("utilityInput").value) || 0;
-        remainingIncome = totalIncome - utilityExpenses;
-        alert("Income and Utility Expenses Set!");
+    function addIncome() {
+        let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
+        let date = document.getElementById("incomeDate").value;
+        if (!date) {
+            alert("Please select a date.");
+            return;
+        }
+
+        totalIncome += amount;
+        document.getElementById("incomeList").innerHTML += `<li>${date}: ${amount} MVR</li>`;
+        document.getElementById("totalIncome").innerText = totalIncome;
+        updateBudgets();
+    }
+
+    function addUtility() {
+        let name = document.getElementById("utilityName").value;
+        let amount = parseFloat(document.getElementById("utilityAmount").value) || 0;
+        if (!name) {
+            alert("Please enter a utility name.");
+            return;
+        }
+
+        totalUtilities += amount;
+        document.getElementById("utilityList").innerHTML += `<li>${name}: ${amount} MVR</li>`;
+        document.getElementById("totalUtilities").innerText = totalUtilities;
+        updateBudgets();
     }
 
     function setBudgets() {
@@ -132,55 +177,29 @@
     }
 
     function updateBudgets() {
+        remainingIncome = totalIncome - totalUtilities;
         let budgetDiv = document.getElementById("budgets");
         budgetDiv.innerHTML = "";
 
         for (let key in budgets) {
             budgets[key].amount = (remainingIncome * budgets[key].percentage) / 100;
-            let remaining = budgets[key].amount - budgets[key].spent;
-            
-            budgetDiv.innerHTML += `
-                <div class="budget-section">
-                    <div class="budget-title">${key.toUpperCase()} Budget</div>
-                    Allocated: <strong>${budgets[key].amount.toFixed(2)} MVR</strong><br>
-                    Remaining: <strong>${remaining.toFixed(2)} MVR</strong><br>
-                    <label>Expense:</label>
-                    <input type="number" id="expense-${key}" placeholder="Enter expense">
-                    <button onclick="addExpense('${key}')">Add Expense</button>
-                    <ul class="expense-list" id="list-${key}"></ul>
-                </div>`;
+            budgetDiv.innerHTML += `<div class="section">
+                <div class="section-title">${key.toUpperCase()} Budget: ${budgets[key].amount.toFixed(2)} MVR</div>
+            </div>`;
         }
 
+        document.getElementById("remainingBalance").innerText = remainingIncome.toFixed(2);
         updateChart();
     }
 
-    function addExpense(budgetType) {
-        let expense = parseFloat(document.getElementById(`expense-${budgetType}`).value) || 0;
-        if (expense > budgets[budgetType].amount - budgets[budgetType].spent) {
-            alert("Not enough balance in this budget!");
-            return;
-        }
-
-        budgets[budgetType].spent += expense;
-        document.getElementById(`list-${budgetType}`).innerHTML += `<li>${expense} MVR</li>`;
-        updateBudgets();
-    }
-
     function updateChart() {
-        let labels = Object.keys(budgets).map(b => b.toUpperCase());
-        let data = Object.values(budgets).map(b => b.amount);
-        let remaining = Object.values(budgets).map(b => b.amount - b.spent);
-
         if (budgetChart) budgetChart.destroy();
         let ctx = document.getElementById("budgetChart").getContext("2d");
         budgetChart = new Chart(ctx, {
-            type: "bar",
+            type: "pie",
             data: {
-                labels: labels,
-                datasets: [
-                    { label: "Allocated Budget", data: data, backgroundColor: "blue" },
-                    { label: "Remaining Balance", data: remaining, backgroundColor: "green" }
-                ]
+                labels: Object.keys(budgets),
+                datasets: [{ data: Object.values(budgets).map(b => b.amount), backgroundColor: ["blue", "green", "orange", "red"] }]
             }
         });
     }
