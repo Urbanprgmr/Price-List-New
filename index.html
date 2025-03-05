@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense & Budget Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,7 +23,7 @@
             text-align: center;
             color: #333;
         }
-        input, button {
+        input, button, select {
             width: 100%;
             padding: 10px;
             margin: 5px 0;
@@ -62,15 +61,15 @@
             display: flex;
             justify-content: space-between;
         }
-        .delete-btn {
+        .delete-btn, .edit-btn {
             background: red;
             color: white;
             border: none;
             padding: 5px;
             cursor: pointer;
         }
-        .chart-container {
-            margin-top: 20px;
+        .edit-btn {
+            background: orange;
         }
     </style>
 </head>
@@ -103,41 +102,50 @@
         <h3>Total Utility Expenses: <span id="totalUtilities">0</span> MVR</h3>
     </div>
 
-    <!-- Budget Percentages -->
+    <!-- Budget Allocation -->
     <div class="section">
-        <div class="section-title">Set Budget Percentages</div>
-        <label>Saving Percentage (%):</label>
+        <div class="section-title">Set Budget Allocation</div>
+        <label>Saving (%):</label>
         <input type="number" id="savingPercent">
-        <label>Life Expenses Percentage (%):</label>
+        <label>Life Expenses (%):</label>
         <input type="number" id="lifePercent">
-        <label>Coffee Budget Percentage (%):</label>
+        <label>Coffee Budget (%):</label>
         <input type="number" id="coffeePercent">
-        <label>Extra Activities Percentage (%):</label>
+        <label>Extra Activities (%):</label>
         <input type="number" id="extraPercent">
         <button onclick="setBudgets()">Set Budgets</button>
     </div>
 
     <div id="budgets"></div>
 
+    <!-- Expense Section -->
+    <div class="section">
+        <div class="section-title">Add Expense</div>
+        <label>Select Budget:</label>
+        <select id="expenseCategory">
+            <option value="saving">Saving</option>
+            <option value="life">Life Expenses</option>
+            <option value="coffee">Coffee</option>
+            <option value="extra">Extra Activities</option>
+        </select>
+        <label>Expense Amount (MVR):</label>
+        <input type="number" id="expenseAmount">
+        <button onclick="addExpense()">Add Expense</button>
+    </div>
+
     <h3>Remaining Balance: <span id="remainingBalance">0</span> MVR</h3>
 
-    <div class="chart-container">
-        <canvas id="budgetChart"></canvas>
+    <!-- Data History -->
+    <div class="section">
+        <div class="section-title">Expense History</div>
+        <ul class="list" id="expenseHistory"></ul>
     </div>
 </div>
 
 <script>
-    let totalIncome = parseFloat(localStorage.getItem("totalIncome")) || 0;
-    let totalUtilities = parseFloat(localStorage.getItem("totalUtilities")) || 0;
-    let remainingIncome = totalIncome - totalUtilities;
-    let budgets = JSON.parse(localStorage.getItem("budgets")) || { saving: 0, life: 0, coffee: 0, extra: 0 };
-    let budgetChart;
-
-    function saveData() {
-        localStorage.setItem("totalIncome", totalIncome);
-        localStorage.setItem("totalUtilities", totalUtilities);
-        localStorage.setItem("budgets", JSON.stringify(budgets));
-    }
+    let totalIncome = 0, totalUtilities = 0;
+    let remainingIncome = 0;
+    let budgets = { saving: 0, life: 0, coffee: 0, extra: 0 };
 
     function addIncome() {
         let amount = parseFloat(document.getElementById("incomeInput").value) || 0;
@@ -145,7 +153,6 @@
         if (!date) return alert("Please select a date.");
         totalIncome += amount;
         document.getElementById("totalIncome").innerText = totalIncome;
-        saveData();
         updateBudgets();
     }
 
@@ -155,7 +162,6 @@
         if (!name) return alert("Enter utility name.");
         totalUtilities += amount;
         document.getElementById("totalUtilities").innerText = totalUtilities;
-        saveData();
         updateBudgets();
     }
 
@@ -165,33 +171,26 @@
         budgets.life = total * (document.getElementById("lifePercent").value / 100);
         budgets.coffee = total * (document.getElementById("coffeePercent").value / 100);
         budgets.extra = total * (document.getElementById("extraPercent").value / 100);
-        saveData();
-        updateChart();
+        updateBudgets();
+    }
+
+    function addExpense() {
+        let category = document.getElementById("expenseCategory").value;
+        let amount = parseFloat(document.getElementById("expenseAmount").value) || 0;
+        if (amount > budgets[category]) return alert("Not enough funds in this budget.");
+        budgets[category] -= amount;
+        document.getElementById("expenseHistory").innerHTML += `<li>${category.toUpperCase()}: -${amount} MVR</li>`;
+        updateBudgets();
     }
 
     function updateBudgets() {
         remainingIncome = totalIncome - totalUtilities;
         document.getElementById("remainingBalance").innerText = remainingIncome;
-        updateChart();
     }
 
-    function updateChart() {
-        if (budgetChart) budgetChart.destroy();
-        let ctx = document.getElementById("budgetChart").getContext("2d");
-        budgetChart = new Chart(ctx, {
-            type: "pie",
-            data: {
-                labels: Object.keys(budgets),
-                datasets: [{ data: Object.values(budgets), backgroundColor: ["blue", "green", "orange", "red"] }]
-            }
-        });
-    }
-
-    // Load stored values on page load
     document.getElementById("totalIncome").innerText = totalIncome;
     document.getElementById("totalUtilities").innerText = totalUtilities;
     updateBudgets();
-
 </script>
 
 </body>
