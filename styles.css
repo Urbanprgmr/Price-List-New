@@ -161,19 +161,32 @@ h3 {
   align-items: center;
 }
 .history-section li .entry-text {
+  flex-grow: 1;
   margin-right: 10px;
+}
+.history-section li .entry-actions {
+  display: flex;
+  gap: 5px;
 }
 .history-section li .entry-actions button {
   cursor: pointer;
-  background: none;
+  background: #444;
   border: none;
-  color: #bbbbbb;
-  margin-left: 10px;
+  color: #ffffff;
+  padding: 5px 8px;
+  border-radius: 4px;
   font-size: 0.9em;
 }
-.history-section li .entry-actions button:hover {
-  color: #ffffff;
+.history-section li .entry-actions button.edit-btn {
+  background: #ffaa00;
 }
+.history-section li .entry-actions button.delete-btn {
+  background: #ff4d4d;
+}
+.history-section li .entry-actions button:hover {
+  opacity: 0.8;
+}
+
 /* "No entries" placeholder text */
 li.empty {
   background: none;
