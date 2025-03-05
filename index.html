@@ -23,12 +23,10 @@
       </div>
     </div>
     
-    <!-- Budget Categories Summary -->
+    <!-- Budget Summary -->
     <div id="budgets-summary">
       <h2>Budget Categories</h2>
-      <ul id="budgets-list">
-        <!-- Budget categories will be listed here -->
-      </ul>
+      <ul id="budgets-list"></ul>
     </div>
     
     <!-- Forms Section -->
@@ -39,67 +37,49 @@
         <form id="income-form">
           <input type="number" id="income-amount" placeholder="Amount (MVR)" step="0.01" required />
           <input type="text" id="income-desc" placeholder="Description (optional)" />
-          <button type="submit" id="income-submit-btn">Add Income</button>
-          <button type="button" id="income-cancel-btn" class="cancel-btn">Cancel</button>
+          <button type="submit">Add Income</button>
         </form>
         <h3>Add Utility Expense</h3>
         <form id="utility-form">
           <input type="number" id="utility-amount" placeholder="Amount (MVR)" step="0.01" required />
           <input type="text" id="utility-desc" placeholder="Description (optional)" />
-          <button type="submit" id="utility-submit-btn">Add Expense</button>
-          <button type="button" id="utility-cancel-btn" class="cancel-btn">Cancel</button>
+          <button type="submit">Add Expense</button>
         </form>
       </div>
+      
       <!-- Budget Category and Budget Expense forms -->
       <div class="form-col">
         <h3>Add Budget Category</h3>
         <form id="budget-form">
           <input type="text" id="budget-name" placeholder="Category Name" required />
           <div class="budget-type-options">
-            <label><input type="radio" name="budget-type" value="fixed" id="budget-type-fixed" checked> Fixed Amount</label>
-            <label><input type="radio" name="budget-type" value="percent" id="budget-type-percent"> % of Remaining</label>
+            <label><input type="radio" name="budget-type" value="fixed" checked> Fixed Amount</label>
+            <label><input type="radio" name="budget-type" value="percent"> % of Remaining</label>
           </div>
-          <input type="number" id="budget-value" placeholder="Enter amount or percentage" step="0.01" required />
-          <button type="submit" id="budget-submit-btn">Add Budget</button>
-        </form>
-        <h3>Add Budget Expense</h3>
-        <form id="budget-expense-form">
-          <select id="expense-category"></select>
-          <input type="number" id="expense-amount" placeholder="Amount (MVR)" step="0.01" required />
-          <input type="text" id="expense-desc" placeholder="Description (optional)" />
-          <button type="submit" id="expense-submit-btn">Add Expense</button>
-          <button type="button" id="expense-cancel-btn" class="cancel-btn">Cancel</button>
+          <input type="number" id="budget-value" placeholder="Enter amount or %" step="0.01" required />
+          <button type="submit">Add Budget</button>
         </form>
       </div>
     </div>
-    
-    <!-- Data History Section -->
+
+    <!-- Data History -->
     <div id="history">
       <h2>Data History</h2>
-      
       <div class="history-section">
         <h3>Incomes</h3>
-        <ul id="income-list">
-          <!-- Income entries -->
-        </ul>
+        <ul id="income-list"></ul>
       </div>
-      
       <div class="history-section">
         <h3>Utility Expenses</h3>
-        <ul id="utility-list">
-          <!-- Utility entries -->
-        </ul>
+        <ul id="utility-list"></ul>
       </div>
-      
       <div class="history-section">
         <h3>Budget Expenses</h3>
-        <div id="budget-expense-list">
-          <!-- Budget expenses grouped by category -->
-        </div>
+        <div id="budget-expense-list"></div>
       </div>
     </div>
   </div>
-
+  
   <script src="script.js"></script>
 </body>
 </html>
