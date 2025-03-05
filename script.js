@@ -1,600 +1,501 @@
-// Unique localStorage keys with a distinctive prefix
-const LS_PREFIX = "ExpBudTracker_";
-const LS_INCOMES = LS_PREFIX + "incomes";
-const LS_UTILITIES = LS_PREFIX + "utilities";
-const LS_BUDGETS = LS_PREFIX + "budgets";
-
-// Data arrays for incomes, utility expenses, and budget categories
-let incomes = [];
-let utilityExpenses = [];
-let budgetCategories = [];
-
-// Edit mode flags and IDs
-let editIncomeId = null;
-let editUtilityId = null;
-let editBudgetExpId = null;
-let editBudgetExpOrigCatId = null;  // store original category of budget expense being edited
-
-// Get references to form elements and lists
-const totalIncomeEl = document.getElementById("total-income");
-const totalExpensesEl = document.getElementById("total-expenses");
-const balanceEl = document.getElementById("balance");
-const budgetsListEl = document.getElementById("budgets-list");
-
-const incomeForm = document.getElementById("income-form");
-const incomeAmountInput = document.getElementById("income-amount");
-const incomeDescInput = document.getElementById("income-desc");
-const incomeSubmitBtn = document.getElementById("income-submit-btn");
-const incomeCancelBtn = document.getElementById("income-cancel-btn");
-
-const utilityForm = document.getElementById("utility-form");
-const utilityAmountInput = document.getElementById("utility-amount");
-const utilityDescInput = document.getElementById("utility-desc");
-const utilitySubmitBtn = document.getElementById("utility-submit-btn");
-const utilityCancelBtn = document.getElementById("utility-cancel-btn");
-
-const budgetForm = document.getElementById("budget-form");
-const budgetNameInput = document.getElementById("budget-name");
-const budgetTypeFixedRadio = document.getElementById("budget-type-fixed");
-const budgetTypePercentRadio = document.getElementById("budget-type-percent");
-const budgetValueInput = document.getElementById("budget-value");
-const budgetSubmitBtn = document.getElementById("budget-submit-btn");
-
-const budgetExpenseForm = document.getElementById("budget-expense-form");
-const expenseCategorySelect = document.getElementById("expense-category");
-const expenseAmountInput = document.getElementById("expense-amount");
-const expenseDescInput = document.getElementById("expense-desc");
-const expenseSubmitBtn = document.getElementById("expense-submit-btn");
-const expenseCancelBtn = document.getElementById("expense-cancel-btn");
-
-const incomeListEl = document.getElementById("income-list");
-const utilityListEl = document.getElementById("utility-list");
-const budgetExpenseListContainer = document.getElementById("budget-expense-list");
-
-// Load data from localStorage
-function loadData() {
-  const incomesData = localStorage.getItem(LS_INCOMES);
-  const utilitiesData = localStorage.getItem(LS_UTILITIES);
-  const budgetsData = localStorage.getItem(LS_BUDGETS);
-  if (incomesData) {
-    try { incomes = JSON.parse(incomesData) || []; } catch(e) { incomes = []; }
-  }
-  if (utilitiesData) {
-    try { utilityExpenses = JSON.parse(utilitiesData) || []; } catch(e) { utilityExpenses = []; }
-  }
-  if (budgetsData) {
-    try { budgetCategories = JSON.parse(budgetsData) || []; } catch(e) { budgetCategories = []; }
-  }
-}
-
-// Save current data to localStorage
-function saveData() {
-  localStorage.setItem(LS_INCOMES, JSON.stringify(incomes));
-  localStorage.setItem(LS_UTILITIES, JSON.stringify(utilityExpenses));
-  localStorage.setItem(LS_BUDGETS, JSON.stringify(budgetCategories));
-}
-
-// Recalculate budget allocations (for percent-based budgets) and all totals
-function recalcBudgetsAndTotals() {
-  // Calculate total income and total utilities
-  const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
-  const totalUtility = utilityExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-  // Remaining income after utilities (for percentage allocations)
-  let remainingIncome = totalIncome - totalUtility;
-  if (remainingIncome < 0) remainingIncome = 0;
-  // Recalculate each budget category
-  for (let cat of budgetCategories) {
-    if (cat.type === 'percent') {
-      // Allocate percentage of remaining income
-      cat.allocated = (remainingIncome * cat.value) / 100;
-    } else {
-      // Fixed amount
-      cat.allocated = cat.value;
-    }
-    // Recalculate spent and remaining for the category
-    cat.spent = cat.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    cat.remaining = cat.allocated - cat.spent;
-  }
-  // Calculate total expenses (utilities + all budget expenses) and balance
-  const totalBudgetExpenses = budgetCategories.reduce((sum, cat) => sum + cat.spent, 0);
-  const totalExpenses = totalUtility + totalBudgetExpenses;
-  const totalBalance = totalIncome - totalExpenses;
-  return { totalIncome, totalUtility, totalBudgetExpenses, totalExpenses, totalBalance };
-}
-
-// Update the entire UI (summary, budgets, lists) based on current state
-function updateUI() {
-  // Recalculate dynamic values
-  const totals = recalcBudgetsAndTotals();
-  // Update summary fields
-  totalIncomeEl.textContent = totals.totalIncome.toFixed(2);
-  totalExpensesEl.textContent = totals.totalExpenses.toFixed(2);
-  balanceEl.textContent = totals.totalBalance.toFixed(2);
-  
-  // Update budget categories summary list
-  budgetsListEl.innerHTML = "";
-  if (budgetCategories.length === 0) {
-    // No budget categories yet
-    const li = document.createElement("li");
-    li.classList.add("empty");
-    li.textContent = "No budgets set.";
-    budgetsListEl.appendChild(li);
-  } else {
-    for (let cat of budgetCategories) {
-      const li = document.createElement("li");
-      // Check if overspent (remaining negative) to mark
-      if (cat.remaining < 0) {
-        li.classList.add("over-budget");
-      }
-      // Budget name and type label
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "budget-name";
-      nameSpan.textContent = cat.name;
-      // Add type label (percent or fixed)
-      if (cat.type === 'percent') {
-        nameSpan.textContent += ` [${cat.value}%]`;
-      } else {
-        nameSpan.textContent += ` [Fixed]`;
-      }
-      li.appendChild(nameSpan);
-      // Budget details (allocated, spent, remaining)
-      const detailsSpan = document.createElement("span");
-      detailsSpan.className = "budget-details";
-      detailsSpan.innerHTML = ` - Allocated: MVR ${cat.allocated.toFixed(2)}, Spent: MVR ${cat.spent.toFixed(2)}, Remaining: MVR <span class="remaining-amount">${cat.remaining.toFixed(2)}</span>`;
-      li.appendChild(detailsSpan);
-      // Progress bar
-      const barContainer = document.createElement("div");
-      barContainer.className = "budget-bar";
-      const barInner = document.createElement("div");
-      barInner.className = "bar-inner";
-      // Calculate bar fill percentage
-      let fillPercent;
-      if (cat.allocated > 0) {
-        fillPercent = (cat.spent / cat.allocated) * 100;
-        if (fillPercent > 100) fillPercent = 100;
-      } else {
-        fillPercent = cat.spent > 0 ? 100 : 0;
-      }
-      barInner.style.width = fillPercent + "%";
-      // If overspent, bar will be colored via CSS (li.over-budget .bar-inner)
-      barContainer.appendChild(barInner);
-      li.appendChild(barContainer);
-      budgetsListEl.appendChild(li);
-    }
-  }
-  
-  // Update category options in "Add Budget Expense" form
-  expenseCategorySelect.innerHTML = "";
-  if (budgetCategories.length === 0) {
-    const opt = document.createElement("option");
-    opt.textContent = "No categories available";
-    opt.disabled = true;
-    opt.selected = true;
-    expenseCategorySelect.appendChild(opt);
-    expenseAmountInput.disabled = true;
-    expenseDescInput.disabled = true;
-    expenseSubmitBtn.disabled = true;
-  } else {
-    expenseAmountInput.disabled = false;
-    expenseDescInput.disabled = false;
-    expenseSubmitBtn.disabled = false;
-    for (let cat of budgetCategories) {
-      const opt = document.createElement("option");
-      opt.value = cat.id;
-      opt.textContent = cat.name;
-      expenseCategorySelect.appendChild(opt);
-    }
-  }
-  
-  // Update incomes list
-  incomeListEl.innerHTML = "";
-  if (incomes.length === 0) {
-    const li = document.createElement("li");
-    li.classList.add("empty");
-    li.textContent = "No incomes added.";
-    incomeListEl.appendChild(li);
-  } else {
-    for (let inc of incomes) {
-      const li = document.createElement("li");
-      li.dataset.id = inc.id;
-      const textSpan = document.createElement("span");
-      textSpan.className = "entry-text";
-      // Display description if available, otherwise just amount
-      if (inc.desc && inc.desc.trim() !== "") {
-        textSpan.textContent = `${inc.desc} - MVR ${inc.amount.toFixed(2)}`;
-      } else {
-        textSpan.textContent = `MVR ${inc.amount.toFixed(2)}`;
-      }
-      li.appendChild(textSpan);
-      // Actions (edit, delete)
-      const actionsSpan = document.createElement("span");
-      actionsSpan.className = "entry-actions";
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "✏️";  // pencil emoji for edit
-      editBtn.title = "Edit";
-      editBtn.className = "edit-btn";
-      editBtn.dataset.id = inc.id;
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "🗑️";  // trash can emoji for delete
-      deleteBtn.title = "Delete";
-      deleteBtn.className = "delete-btn";
-      deleteBtn.dataset.id = inc.id;
-      actionsSpan.appendChild(editBtn);
-      actionsSpan.appendChild(deleteBtn);
-      li.appendChild(actionsSpan);
-      incomeListEl.appendChild(li);
-    }
-  }
-  
-  // Update utility expenses list
-  utilityListEl.innerHTML = "";
-  if (utilityExpenses.length === 0) {
-    const li = document.createElement("li");
-    li.classList.add("empty");
-    li.textContent = "No utility expenses added.";
-    utilityListEl.appendChild(li);
-  } else {
-    for (let exp of utilityExpenses) {
-      const li = document.createElement("li");
-      li.dataset.id = exp.id;
-      const textSpan = document.createElement("span");
-      textSpan.className = "entry-text";
-      if (exp.desc && exp.desc.trim() !== "") {
-        textSpan.textContent = `${exp.desc} - MVR ${exp.amount.toFixed(2)}`;
-      } else {
-        textSpan.textContent = `MVR ${exp.amount.toFixed(2)}`;
-      }
-      li.appendChild(textSpan);
-      // Actions
-      const actionsSpan = document.createElement("span");
-      actionsSpan.className = "entry-actions";
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "✏️";
-      editBtn.title = "Edit";
-      editBtn.className = "edit-btn";
-      editBtn.dataset.id = exp.id;
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "🗑️";
-      deleteBtn.title = "Delete";
-      deleteBtn.className = "delete-btn";
-      deleteBtn.dataset.id = exp.id;
-      actionsSpan.appendChild(editBtn);
-      actionsSpan.appendChild(deleteBtn);
-      li.appendChild(actionsSpan);
-      utilityListEl.appendChild(li);
-    }
-  }
-  
-  // Update budget expenses history (grouped by category)
-  budgetExpenseListContainer.innerHTML = "";
-  let anyBudgetExpense = false;
-  for (let cat of budgetCategories) {
-    if (cat.expenses.length > 0) {
-      anyBudgetExpense = true;
-      const catGroupDiv = document.createElement("div");
-      catGroupDiv.className = "category-group";
-      const titleDiv = document.createElement("div");
-      titleDiv.className = "category-title";
-      titleDiv.textContent = cat.name;
-      catGroupDiv.appendChild(titleDiv);
-      const ul = document.createElement("ul");
-      for (let exp of cat.expenses) {
-        const li = document.createElement("li");
-        li.dataset.id = exp.id;
-        li.dataset.catId = cat.id;
-        const textSpan = document.createElement("span");
-        textSpan.className = "entry-text";
-        if (exp.desc && exp.desc.trim() !== "") {
-          textSpan.textContent = `${exp.desc} - MVR ${exp.amount.toFixed(2)}`;
-        } else {
-          textSpan.textContent = `MVR ${exp.amount.toFixed(2)}`;
-        }
-        li.appendChild(textSpan);
-        // Actions
-        const actionsSpan = document.createElement("span");
-        actionsSpan.className = "entry-actions";
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "✏️";
-        editBtn.title = "Edit";
-        editBtn.className = "edit-btn";
-        editBtn.dataset.id = exp.id;
-        editBtn.dataset.catId = cat.id;
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "🗑️";
-        deleteBtn.title = "Delete";
-        deleteBtn.className = "delete-btn";
-        deleteBtn.dataset.id = exp.id;
-        deleteBtn.dataset.catId = cat.id;
-        actionsSpan.appendChild(editBtn);
-        actionsSpan.appendChild(deleteBtn);
-        li.appendChild(actionsSpan);
-        ul.appendChild(li);
-      }
-      catGroupDiv.appendChild(ul);
-      budgetExpenseListContainer.appendChild(catGroupDiv);
-    }
-  }
-  if (!anyBudgetExpense) {
-    const p = document.createElement("p");
-    p.classList.add("empty");
-    p.textContent = "No budget expenses recorded yet.";
-    budgetExpenseListContainer.appendChild(p);
-  }
-  
-  // Save updated state to localStorage
-  saveData();
-}
-
-// Utility function to generate a unique ID (number) based on timestamp
+// Utility functions
 function generateId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
+function formatTime(timestamp) {
+  return new Date(timestamp).toLocaleString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
 
-// Add Income
-incomeForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const amountVal = parseFloat(incomeAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid income amount.");
-    return;
-  }
-  const descVal = incomeDescInput.value.trim();
-  if (editIncomeId === null) {
-    // Add new income entry
-    const newIncome = {
-      id: generateId(),
-      amount: amountVal,
-      desc: descVal
-    };
-    incomes.push(newIncome);
-  } else {
-    // Update existing income entry
-    const inc = incomes.find(i => i.id === editIncomeId);
-    if (inc) {
-      inc.amount = amountVal;
-      inc.desc = descVal;
-    }
-    // Reset edit mode
-    editIncomeId = null;
-    incomeSubmitBtn.textContent = "Add Income";
-    incomeCancelBtn.style.display = "none";
-  }
-  // Clear form fields
-  incomeAmountInput.value = "";
-  incomeDescInput.value = "";
-  // Update UI and data
-  updateUI();
-});
+// Load stored data or initialize empty
+let incomes = JSON.parse(localStorage.getItem('incomes') || '[]');
+let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
+let categories = JSON.parse(localStorage.getItem('categories') || '[]');
+let logs = JSON.parse(localStorage.getItem('logs') || '[]');
+let savingGoal = JSON.parse(localStorage.getItem('savingGoal') || 'null');
 
-// Cancel editing income
-incomeCancelBtn.addEventListener("click", function() {
-  editIncomeId = null;
-  incomeAmountInput.value = "";
-  incomeDescInput.value = "";
-  incomeSubmitBtn.textContent = "Add Income";
-  incomeCancelBtn.style.display = "none";
-});
+// Edit mode flags
+let editingIncomeId = null;
+let editingExpenseId = null;
+let editingCategoryId = null;
 
-// Add Utility Expense
-utilityForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const amountVal = parseFloat(utilityAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid expense amount.");
-    return;
-  }
-  const descVal = utilityDescInput.value.trim();
-  if (editUtilityId === null) {
-    const newExp = {
-      id: generateId(),
-      amount: amountVal,
-      desc: descVal
-    };
-    utilityExpenses.push(newExp);
-  } else {
-    const exp = utilityExpenses.find(x => x.id === editUtilityId);
-    if (exp) {
-      exp.amount = amountVal;
-      exp.desc = descVal;
-    }
-    editUtilityId = null;
-    utilitySubmitBtn.textContent = "Add Expense";
-    utilityCancelBtn.style.display = "none";
-  }
-  utilityAmountInput.value = "";
-  utilityDescInput.value = "";
-  updateUI();
-});
+// DOM elements
+const incomeListElem = document.getElementById('income-list');
+const expenseListElem = document.getElementById('expense-list');
+const budgetsListElem = document.getElementById('budgets-list');
+const logListElem = document.getElementById('log-list');
+const noCategoryMsgElem = document.getElementById('no-category-msg');
+const summaryElem = document.getElementById('summary');
+const incomeForm = document.getElementById('income-form');
+const expenseForm = document.getElementById('expense-form');
+const categoryForm = document.getElementById('category-form');
+const goalForm = document.getElementById('goal-form');
+const goalTypeSelect = document.getElementById('goal-type');
+const goalValueInput = document.getElementById('goal-value');
 
-// Cancel editing utility expense
-utilityCancelBtn.addEventListener("click", function() {
-  editUtilityId = null;
-  utilityAmountInput.value = "";
-  utilityDescInput.value = "";
-  utilitySubmitBtn.textContent = "Add Expense";
-  utilityCancelBtn.style.display = "none";
-});
+// Helper to get month key "YYYY-MM"
+function getMonthKey(date = new Date()) {
+  let y = date.getFullYear();
+  let m = date.getMonth() + 1;
+  return y + '-' + (m < 10 ? '0' + m : m);
+}
 
-// Add Budget Category
-budgetForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const nameVal = budgetNameInput.value.trim();
-  if (nameVal === "") {
-    alert("Please enter a category name.");
-    return;
-  }
-  const isPercent = budgetTypePercentRadio.checked;
-  const valueVal = parseFloat(budgetValueInput.value);
-  if (isNaN(valueVal) || valueVal <= 0) {
-    alert("Please enter a valid budget value.");
-    return;
-  }
-  const newCat = {
-    id: generateId(),
-    name: nameVal,
-    type: isPercent ? "percent" : "fixed",
-    value: valueVal,
-    allocated: 0,
-    spent: 0,
-    remaining: 0,
-    expenses: []
-  };
-  budgetCategories.push(newCat);
-  // Clear form
-  budgetNameInput.value = "";
-  budgetTypeFixedRadio.checked = true;
-  budgetTypePercentRadio.checked = false;
-  budgetValueInput.value = "";
-  // Update UI (which will recalc allocations for percent)
-  updateUI();
-});
-
-// Add Budget Expense
-budgetExpenseForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  if (budgetCategories.length === 0) {
-    alert("Please add a budget category first.");
-    return;
-  }
-  const catId = expenseCategorySelect.value;
-  const amountVal = parseFloat(expenseAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid expense amount.");
-    return;
-  }
-  const descVal = expenseDescInput.value.trim();
-  if (editBudgetExpId === null) {
-    // Add new budget expense
-    const cat = budgetCategories.find(c => c.id == catId);
-    if (cat) {
-      const newExp = {
-        id: generateId(),
-        amount: amountVal,
-        desc: descVal
-      };
-      cat.expenses.push(newExp);
-    }
-  } else {
-    // Update existing budget expense
-    let origCat = budgetCategories.find(c => c.id === editBudgetExpOrigCatId);
-    let expenseObj = null;
-    if (origCat) {
-      expenseObj = origCat.expenses.find(exp => exp.id === editBudgetExpId);
-    }
-    const newCat = budgetCategories.find(c => c.id == catId);
-    if (expenseObj) {
-      // If category changed
-      if (!newCat || newCat.id !== editBudgetExpOrigCatId) {
-        // Remove from original category
-        if (origCat) {
-          origCat.expenses = origCat.expenses.filter(exp => exp.id !== editBudgetExpId);
-        }
-        // Add to new category
-        if (newCat) {
-          // Keep same id for continuity
-          expenseObj.amount = amountVal;
-          expenseObj.desc = descVal;
-          expenseObj.id = editBudgetExpId;
-          newCat.expenses.push(expenseObj);
-        }
-      } else {
-        // Category unchanged, just update values
-        expenseObj.amount = amountVal;
-        expenseObj.desc = descVal;
+// Monthly rollover: carry forward any leftover budget
+const currentMonth = getMonthKey();
+let lastProcessedMonth = localStorage.getItem('lastProcessedMonth');
+if (!lastProcessedMonth) {
+  localStorage.setItem('lastProcessedMonth', currentMonth);
+} else if (lastProcessedMonth !== currentMonth) {
+  const nowTime = Date.now();
+  categories.forEach(cat => {
+    // Calculate spending in this category for lastProcessedMonth
+    let spent = 0;
+    expenses.forEach(exp => {
+      if (exp.category === cat.name && exp.month === lastProcessedMonth) {
+        spent += Number(exp.amount);
+      }
+    });
+    const totalBudgetLast = cat.baseBudget + (cat.carry || 0);
+    let leftover = totalBudgetLast - spent;
+    if (leftover < 0) leftover = 0;
+    if (leftover > 0) {
+      // carry leftover to next month
+      cat.carry = (cat.carry || 0) + leftover;
+      logs.push({
+        message: `Carried forward MVR ${leftover.toFixed(2)} in "${cat.name}" from ${lastProcessedMonth} to ${currentMonth}`,
+        time: nowTime
+      });
+    } else {
+      cat.carry = 0;
+      if (spent > totalBudgetLast) {
+        let overAmt = spent - totalBudgetLast;
+        logs.push({
+          message: `Overspent category "${cat.name}" by MVR ${overAmt.toFixed(2)} in ${lastProcessedMonth} (no carry forward)`,
+          time: nowTime
+        });
       }
     }
-    // Reset edit mode
-    editBudgetExpId = null;
-    editBudgetExpOrigCatId = null;
-    expenseSubmitBtn.textContent = "Add Expense";
-    expenseCancelBtn.style.display = "none";
+  });
+  localStorage.setItem('categories', JSON.stringify(categories));
+  localStorage.setItem('logs', JSON.stringify(logs));
+  localStorage.setItem('lastProcessedMonth', currentMonth);
+}
+
+// Refresh category dropdown options for expenses
+function refreshCategoryOptions() {
+  const select = document.getElementById('expense-category');
+  select.innerHTML = '';
+  if (categories.length === 0) {
+    select.disabled = true;
+    noCategoryMsgElem.style.display = 'block';
+  } else {
+    select.disabled = false;
+    noCategoryMsgElem.style.display = 'none';
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.name;
+      opt.textContent = cat.name;
+      select.appendChild(opt);
+    });
   }
-  // Clear form fields
-  expenseCategorySelect.selectedIndex = 0;
-  expenseAmountInput.value = "";
-  expenseDescInput.value = "";
-  // Update UI
-  updateUI();
-});
+}
 
-// Cancel editing budget expense
-expenseCancelBtn.addEventListener("click", function() {
-  editBudgetExpId = null;
-  editBudgetExpOrigCatId = null;
-  expenseAmountInput.value = "";
-  expenseDescInput.value = "";
-  expenseSubmitBtn.textContent = "Add Expense";
-  expenseCancelBtn.style.display = "none";
-});
+// Display budgets and usage for each category
+function refreshBudgets() {
+  budgetsListElem.innerHTML = '';
+  const monthKey = currentMonth;
+  categories.forEach(cat => {
+    // Calculate spent in current month for this category
+    let spent = 0;
+    expenses.forEach(exp => {
+      if (exp.category === cat.name && exp.month === monthKey) {
+        spent += Number(exp.amount);
+      }
+    });
+    const totalBudget = cat.baseBudget + (cat.carry || 0);
+    const leftover = totalBudget - spent;
+    let percentFill = totalBudget > 0 ? (spent / totalBudget) * 100 : 0;
+    if (percentFill > 100) percentFill = 100;
+    const overspent = leftover < 0;
+    const item = document.createElement('div');
+    item.className = 'budget-item';
+    item.innerHTML = `
+      <div>
+        <strong>${cat.name}</strong>
+        <button class="action-btn" onclick="editCategory(${cat.id})">Edit</button>
+      </div>
+      <div class="budget-bar-container">
+        <div class="budget-bar-fill ${overspent ? 'over' : ''}" style="width: ${percentFill}%;"></div>
+      </div>
+      <div class="budget-stats">
+        MVR ${spent.toFixed(2)} / ${totalBudget.toFixed(2)} spent 
+        (${totalBudget > 0 ? ((spent / totalBudget) * 100).toFixed(0) : 0}% of budget, 
+         ${leftover >= 0 ? 'MVR ' + leftover.toFixed(2) + ' left' : 'overspent by MVR ' + Math.abs(leftover).toFixed(2)})
+      </div>`;
+    budgetsListElem.appendChild(item);
+  });
+}
 
-// Handle edit/delete button clicks in lists using event delegation
-incomeListEl.addEventListener("click", function(e) {
-  if (e.target.classList.contains("edit-btn")) {
-    const id = Number(e.target.dataset.id);
-    const inc = incomes.find(i => i.id === id);
-    if (inc) {
-      // Populate form for editing
-      incomeAmountInput.value = inc.amount;
-      incomeDescInput.value = inc.desc || "";
-      editIncomeId = id;
-      incomeSubmitBtn.textContent = "Update Income";
-      incomeCancelBtn.style.display = "inline-block";
-    }
-  } else if (e.target.classList.contains("delete-btn")) {
-    const id = Number(e.target.dataset.id);
-    // Remove income by id
-    incomes = incomes.filter(i => i.id !== id);
-    updateUI();
+// Refresh incomes list
+function refreshIncomeList() {
+  incomeListElem.innerHTML = '';
+  for (let i = incomes.length - 1; i >= 0; i--) {
+    const inc = incomes[i];
+    const li = document.createElement('li');
+    li.className = 'income-item';
+    li.id = `income-${inc.id}`;
+    li.innerHTML = `${inc.name} - MVR ${Number(inc.amount).toFixed(2)} <small>${formatTime(inc.time)}</small>
+      <button class="action-btn" onclick="editIncome(${inc.id})">Edit</button>
+      <button class="action-btn delete-btn" onclick="deleteIncome(${inc.id})">Delete</button>`;
+    incomeListElem.appendChild(li);
   }
-});
+}
 
-utilityListEl.addEventListener("click", function(e) {
-  if (e.target.classList.contains("edit-btn")) {
-    const id = Number(e.target.dataset.id);
-    const exp = utilityExpenses.find(x => x.id === id);
-    if (exp) {
-      utilityAmountInput.value = exp.amount;
-      utilityDescInput.value = exp.desc || "";
-      editUtilityId = id;
-      utilitySubmitBtn.textContent = "Update Expense";
-      utilityCancelBtn.style.display = "inline-block";
-    }
-  } else if (e.target.classList.contains("delete-btn")) {
-    const id = Number(e.target.dataset.id);
-    utilityExpenses = utilityExpenses.filter(x => x.id !== id);
-    updateUI();
+// Refresh expenses list
+function refreshExpenseList() {
+  expenseListElem.innerHTML = '';
+  for (let i = expenses.length - 1; i >= 0; i--) {
+    const exp = expenses[i];
+    const li = document.createElement('li');
+    li.className = 'expense-item';
+    li.id = `expense-${exp.id}`;
+    const namePart = exp.name ? `"${exp.name}"` : '';
+    li.innerHTML = `${exp.category} ${namePart} - MVR ${Number(exp.amount).toFixed(2)} <small>${formatTime(exp.time)}</small>
+      <button class="action-btn" onclick="editExpense(${exp.id})">Edit</button>
+      <button class="action-btn delete-btn" onclick="deleteExpense(${exp.id})">Delete</button>`;
+    expenseListElem.appendChild(li);
   }
-});
+}
 
-budgetExpenseListContainer.addEventListener("click", function(e) {
-  if (e.target.classList.contains("edit-btn")) {
-    const expId = Number(e.target.dataset.id);
-    const catId = Number(e.target.dataset.catId);
-    // Find the category and expense
-    const cat = budgetCategories.find(c => c.id === catId);
-    const exp = cat ? cat.expenses.find(x => x.id === expId) : null;
-    if (cat && exp) {
-      // Populate form for editing
-      expenseCategorySelect.value = catId;
-      expenseAmountInput.value = exp.amount;
-      expenseDescInput.value = exp.desc || "";
-      editBudgetExpId = expId;
-      editBudgetExpOrigCatId = catId;
-      expenseSubmitBtn.textContent = "Update Expense";
-      expenseCancelBtn.style.display = "inline-block";
-    }
-  } else if (e.target.classList.contains("delete-btn")) {
-    const expId = Number(e.target.dataset.id);
-    const catId = Number(e.target.dataset.catId);
-    // Find category and remove the expense
-    const cat = budgetCategories.find(c => c.id === catId);
-    if (cat) {
-      cat.expenses = cat.expenses.filter(x => x.id !== expId);
-    }
-    updateUI();
+// Refresh audit log list
+function refreshLogList() {
+  logListElem.innerHTML = '';
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const entry = logs[i];
+    const li = document.createElement('li');
+    li.className = 'log-item';
+    li.innerHTML = `${entry.message} <small>${formatTime(entry.time)}</small>`;
+    logListElem.appendChild(li);
   }
-});
+}
 
-// Initialize app on page load
-loadData();
-updateUI();
+// Update monthly summary (income, expenses, savings, goal)
+function updateSummary() {
+  const monthKey = currentMonth;
+  let totalInc = 0, totalExp = 0;
+  incomes.forEach(inc => { if (inc.month === monthKey) totalInc += Number(inc.amount); });
+  expenses.forEach(exp => { if (exp.month === monthKey) totalExp += Number(exp.amount); });
+  const netSavings = totalInc - totalExp;
+  let summaryHTML = `
+    <p>Total Income: MVR ${totalInc.toFixed(2)}</p>
+    <p>Total Expenses: MVR ${totalExp.toFixed(2)}</p>`;
+  if (netSavings >= 0) {
+    summaryHTML += `<p>Saved: MVR ${netSavings.toFixed(2)}</p>`;
+  } else {
+    summaryHTML += `<p><span class="neg">Overspent: MVR ${Math.abs(netSavings).toFixed(2)}</span></p>`;
+  }
+  if (savingGoal) {
+    let targetAmount = 0;
+    let goalDesc = '';
+    if (savingGoal.type === 'percent') {
+      targetAmount = (savingGoal.value / 100) * totalInc;
+      goalDesc = `${savingGoal.value}% of income (MVR ${targetAmount.toFixed(2)})`;
+    } else {
+      targetAmount = Number(savingGoal.value);
+      goalDesc = `MVR ${targetAmount.toFixed(2)}`;
+    }
+    if (netSavings >= targetAmount) {
+      summaryHTML += `<p><span class="pos">Savings goal ${goalDesc} achieved!</span></p>`;
+    } else if (netSavings >= 0) {
+      const percentAchieved = targetAmount > 0 ? ((netSavings / targetAmount) * 100).toFixed(0) : 0;
+      summaryHTML += `<p>Savings Goal: ${goalDesc} – ${percentAchieved}% achieved</p>`;
+    } else {
+      summaryHTML += `<p>Savings Goal: ${goalDesc} (not achieved)</p>`;
+    }
+  }
+  summaryElem.innerHTML = summaryHTML;
+}
+
+// Log an action and update log UI
+function addLog(message) {
+  const entry = { message: message, time: Date.now() };
+  logs.push(entry);
+  localStorage.setItem('logs', JSON.stringify(logs));
+  const li = document.createElement('li');
+  li.className = 'log-item';
+  li.innerHTML = `${message} <small>${formatTime(entry.time)}</small>`;
+  li.style.opacity = '0';
+  logListElem.prepend(li);
+  requestAnimationFrame(() => { li.style.opacity = '1'; });
+}
+
+// Form submission handlers
+function handleAddIncome(e) {
+  e.preventDefault();
+  const name = document.getElementById('income-name').value.trim();
+  const amountVal = parseFloat(document.getElementById('income-amount').value);
+  if (!name || isNaN(amountVal) || amountVal <= 0) {
+    alert('Please enter a valid income source and amount.');
+    return;
+  }
+  if (editingIncomeId) {
+    // Update existing income
+    const inc = incomes.find(i => i.id === editingIncomeId);
+    if (!inc) return;
+    const oldName = inc.name;
+    const oldAmount = inc.amount;
+    inc.name = name;
+    inc.amount = amountVal;
+    // (Keep original timestamp and month)
+    localStorage.setItem('incomes', JSON.stringify(incomes));
+    const li = document.getElementById(`income-${inc.id}`);
+    if (li) {
+      li.innerHTML = `${inc.name} - MVR ${Number(inc.amount).toFixed(2)} <small>${formatTime(inc.time)}</small>
+        <button class="action-btn" onclick="editIncome(${inc.id})">Edit</button>
+        <button class="action-btn delete-btn" onclick="deleteIncome(${inc.id})">Delete</button>`;
+    } else {
+      refreshIncomeList();
+    }
+    addLog(`Edited Income "${oldName}" – amount ${oldAmount} -> ${inc.amount}`);
+    editingIncomeId = null;
+    incomeForm.querySelector('button[type="submit"]').textContent = 'Add Income';
+  } else {
+    // Add new income
+    const newInc = {
+      id: generateId(),
+      name: name,
+      amount: amountVal,
+      time: Date.now(),
+      month: getMonthKey()
+    };
+    incomes.push(newInc);
+    localStorage.setItem('incomes', JSON.stringify(incomes));
+    const li = document.createElement('li');
+    li.className = 'income-item';
+    li.id = `income-${newInc.id}`;
+    li.innerHTML = `${newInc.name} - MVR ${newInc.amount.toFixed(2)} <small>${formatTime(newInc.time)}</small>
+      <button class="action-btn" onclick="editIncome(${newInc.id})">Edit</button>
+      <button class="action-btn delete-btn" onclick="deleteIncome(${newInc.id})">Delete</button>`;
+    li.style.opacity = '0';
+    incomeListElem.prepend(li);
+    requestAnimationFrame(() => { li.style.opacity = '1'; });
+    addLog(`Added Income: "${newInc.name}" – MVR ${newInc.amount}`);
+  }
+  incomeForm.reset();
+  updateSummary();
+}
+
+function handleAddExpense(e) {
+  e.preventDefault();
+  const category = document.getElementById('expense-category').value;
+  const name = document.getElementById('expense-name').value.trim();
+  const amountVal = parseFloat(document.getElementById('expense-amount').value);
+  if (!category) {
+    alert('Please select a category.');
+    return;
+  }
+  if (isNaN(amountVal) || amountVal <= 0) {
+    alert('Please enter a valid expense amount.');
+    return;
+  }
+  if (editingExpenseId) {
+    // Update existing expense
+    const exp = expenses.find(e => e.id === editingExpenseId);
+    if (!exp) return;
+    const oldCat = exp.category;
+    const oldName = exp.name;
+    const oldAmount = exp.amount;
+    exp.category = category;
+    exp.name = name;
+    exp.amount = amountVal;
+    // (Keep original timestamp and month)
+    localStorage.setItem('expenses', JSON.stringify(expenses));
+    const li = document.getElementById(`expense-${exp.id}`);
+    if (li) {
+      const namePart = exp.name ? `"${exp.name}"` : '';
+      li.innerHTML = `${exp.category} ${namePart} - MVR ${Number(exp.amount).toFixed(2)} <small>${formatTime(exp.time)}</small>
+        <button class="action-btn" onclick="editExpense(${exp.id})">Edit</button>
+        <button class="action-btn delete-btn" onclick="deleteExpense(${exp.id})">Delete</button>`;
+    } else {
+      refreshExpenseList();
+    }
+    addLog(`Edited Expense (was ${oldCat} "${oldName}" MVR ${oldAmount}) -> (${exp.category} "${exp.name}" MVR ${exp.amount})`);
+    editingExpenseId = null;
+    expenseForm.querySelector('button[type="submit"]').textContent = 'Add Expense';
+  } else {
+    // Add new expense
+    const newExp = {
+      id: generateId(),
+      category: category,
+      name: name,
+      amount: amountVal,
+      time: Date.now(),
+      month: getMonthKey()
+    };
+    expenses.push(newExp);
+    localStorage.setItem('expenses', JSON.stringify(expenses));
+    const li = document.createElement('li');
+    li.className = 'expense-item';
+    li.id = `expense-${newExp.id}`;
+    const namePart = newExp.name ? `"${newExp.name}"` : '';
+    li.innerHTML = `${newExp.category} ${namePart} - MVR ${newExp.amount.toFixed(2)} <small>${formatTime(newExp.time)}</small>
+      <button class="action-btn" onclick="editExpense(${newExp.id})">Edit</button>
+      <button class="action-btn delete-btn" onclick="deleteExpense(${newExp.id})">Delete</button>`;
+    li.style.opacity = '0';
+    expenseListElem.prepend(li);
+    requestAnimationFrame(() => { li.style.opacity = '1'; });
+    addLog(`Added Expense: ${newExp.name ? '"' + newExp.name + '"' : ''} (Category: ${newExp.category}) – MVR ${newExp.amount}`);
+  }
+  expenseForm.reset();
+  refreshBudgets();
+  updateSummary();
+}
+
+function handleAddCategory(e) {
+  e.preventDefault();
+  const name = document.getElementById('category-name').value.trim();
+  const budgetVal = parseFloat(document.getElementById('category-budget').value);
+  if (!name || isNaN(budgetVal) || budgetVal < 0) {
+    alert('Please enter a valid category name and budget.');
+    return;
+  }
+  // Prevent duplicate category names
+  const exists = categories.some(c => c.name.toLowerCase() === name.toLowerCase());
+  if (exists && (!editingCategoryId || (editingCategoryId && categories.find(c => c.id === editingCategoryId).name.toLowerCase() !== name.toLowerCase()))) {
+    alert('This category name already exists.');
+    return;
+  }
+  if (editingCategoryId) {
+    // Update category
+    const cat = categories.find(c => c.id === editingCategoryId);
+    if (!cat) return;
+    const oldName = cat.name;
+    const oldBudget = cat.baseBudget;
+    cat.name = name;
+    cat.baseBudget = budgetVal;
+    // Update existing expenses if name changed
+    if (oldName !== name) {
+      expenses.forEach(exp => {
+        if (exp.category === oldName) exp.category = name;
+      });
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+    }
+    localStorage.setItem('categories', JSON.stringify(categories));
+    refreshCategoryOptions();
+    refreshBudgets();
+    addLog(`Edited Budget Category "${oldName}" – name: "${oldName}"->"${name}", budget: ${oldBudget} -> ${budgetVal}`);
+    editingCategoryId = null;
+    categoryForm.querySelector('button[type="submit"]').textContent = 'Add Category';
+  } else {
+    // Add new category
+    const newCat = { id: generateId(), name: name, baseBudget: budgetVal, carry: 0 };
+    categories.push(newCat);
+    localStorage.setItem('categories', JSON.stringify(categories));
+    refreshCategoryOptions();
+    refreshBudgets();
+    addLog(`Added Budget Category: "${name}" (MVR ${budgetVal} per month)`);
+  }
+  categoryForm.reset();
+}
+
+function handleSetGoal(e) {
+  e.preventDefault();
+  const type = goalTypeSelect.value;
+  const value = parseFloat(goalValueInput.value);
+  if (isNaN(value) || value < 0) {
+    alert('Please enter a valid goal value.');
+    return;
+  }
+  if (type === 'percent' && value > 100) {
+    alert('Percentage goal should be between 0 and 100.');
+    return;
+  }
+  const oldGoal = savingGoal ? { ...savingGoal } : null;
+  savingGoal = { type: type, value: value };
+  localStorage.setItem('savingGoal', JSON.stringify(savingGoal));
+  if (!oldGoal) {
+    addLog(`Set savings goal: ${type === 'percent' ? value + '% of income' : 'MVR ' + value}`);
+  } else {
+    const oldDesc = oldGoal.type === 'percent' ? `${oldGoal.value}% of income` : `MVR ${oldGoal.value}`;
+    const newDesc = savingGoal.type === 'percent' ? `${savingGoal.value}% of income` : `MVR ${savingGoal.value}`;
+    addLog(`Updated savings goal (was ${oldDesc}, now ${newDesc})`);
+  }
+  updateSummary();
+}
+
+// Edit/Delete functions for entries
+function editIncome(id) {
+  const inc = incomes.find(i => i.id === id);
+  if (!inc) return;
+  document.getElementById('income-name').value = inc.name;
+  document.getElementById('income-amount').value = inc.amount;
+  editingIncomeId = id;
+  incomeForm.querySelector('button[type="submit"]').textContent = 'Update Income';
+}
+function deleteIncome(id) {
+  const idx = incomes.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const removed = incomes.splice(idx, 1)[0];
+  localStorage.setItem('incomes', JSON.stringify(incomes));
+  const li = document.getElementById(`income-${id}`);
+  if (li) {
+    li.classList.add('fade-out');
+    setTimeout(() => { if (li.parentNode) li.parentNode.removeChild(li); }, 300);
+  }
+  addLog(`Deleted Income: "${removed.name}" – MVR ${removed.amount}`);
+  updateSummary();
+}
+
+function editExpense(id) {
+  const exp = expenses.find(e => e.id === id);
+  if (!exp) return;
+  document.getElementById('expense-category').value = exp.category;
+  document.getElementById('expense-name').value = exp.name;
+  document.getElementById('expense-amount').value = exp.amount;
+  editingExpenseId = id;
+  expenseForm.querySelector('button[type="submit"]').textContent = 'Update Expense';
+}
+function deleteExpense(id) {
+  const idx = expenses.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const removed = expenses.splice(idx, 1)[0];
+  localStorage.setItem('expenses', JSON.stringify(expenses));
+  const li = document.getElementById(`expense-${id}`);
+  if (li) {
+    li.classList.add('fade-out');
+    setTimeout(() => { if (li.parentNode) li.parentNode.removeChild(li); }, 300);
+  }
+  addLog(`Deleted Expense: ${removed.name ? '"' + removed.name + '"' : ''} (Category: ${removed.category}) – MVR ${removed.amount}`);
+  refreshBudgets();
+  updateSummary();
+}
+
+function editCategory(id) {
+  const cat = categories.find(c => c.id === id);
+  if (!cat) return;
+  document.getElementById('category-name').value = cat.name;
+  document.getElementById('category-budget').value = cat.baseBudget;
+  editingCategoryId = id;
+  categoryForm.querySelector('button[type="submit"]').textContent = 'Update Category';
+}
+
+// Attach form event listeners
+incomeForm.addEventListener('submit', handleAddIncome);
+expenseForm.addEventListener('submit', handleAddExpense);
+categoryForm.addEventListener('submit', handleAddCategory);
+goalForm.addEventListener('submit', handleSetGoal);
+
+// Initial load: populate UI with stored data
+refreshCategoryOptions();
+refreshBudgets();
+refreshIncomeList();
+refreshExpenseList();
+refreshLogList();
+updateSummary();
+// Prefill savings goal form if a goal is set
+if (savingGoal) {
+  goalTypeSelect.value = savingGoal.type;
+  goalValueInput.value = savingGoal.value;
+}
