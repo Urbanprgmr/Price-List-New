@@ -3,7 +3,7 @@ const LS_PREFIX = "BudgetApp_";
 const LS_INCOMES = LS_PREFIX + "incomes";
 const LS_UTILITIES = LS_PREFIX + "utilities";
 const LS_BUDGETS = LS_PREFIX + "budgets";
-const LS_HISTORY = LS_PREFIX + "history"; // Unified history
+const LS_HISTORY = LS_PREFIX + "history"; 
 
 // Data Arrays
 let incomes = [], utilityExpenses = [], budgetCategories = [], history = [];
@@ -56,7 +56,7 @@ function updateUI() {
         ? "<li class='empty'>No budgets set.</li>"
         : budgetCategories.map(cat => `
             <li>
-                <div>${cat.name}</div>
+                <div><strong>${cat.name}</strong></div>
                 <div>Assigned: MVR ${cat.allocated.toFixed(2)}</div>
                 <div>Used: MVR ${cat.spent.toFixed(2)}</div>
                 <div>Remaining: MVR ${cat.remaining.toFixed(2)}</div>
