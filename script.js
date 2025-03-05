@@ -3,7 +3,7 @@ const LS_PREFIX = "BudgetApp_";
 const LS_INCOMES = LS_PREFIX + "incomes";
 const LS_UTILITIES = LS_PREFIX + "utilities";
 const LS_BUDGETS = LS_PREFIX + "budgets";
-const LS_HISTORY = LS_PREFIX + "history"; // New unified history
+const LS_HISTORY = LS_PREFIX + "history"; // Unified history
 
 // Data Arrays
 let incomes = [], utilityExpenses = [], budgetCategories = [], history = [];
@@ -52,23 +52,23 @@ function updateUI() {
             <div class="budget-bar-container">
                 <div class="budget-bar" style="width: ${Math.max((cat.remaining / cat.allocated) * 100, 0)}%"></div>
             </div>
-            <button class="small-btn" onclick="editBudget(${cat.id})">✏</button>
-            <button class="small-btn" onclick="deleteBudget(${cat.id})">🗑</button>
+            <button class="tiny-btn" onclick="editBudget(${cat.id})">✏</button>
+            <button class="tiny-btn" onclick="deleteBudget(${cat.id})">🗑</button>
         </li>
     `).join("");
 
     // Update budget category selection in expense form
     const expenseCategorySelect = document.getElementById("expense-category");
-    expenseCategorySelect.innerHTML = budgetCategories.map(cat => `
-        <option value="${cat.id}">${cat.name}</option>
-    `).join("");
+    expenseCategorySelect.innerHTML = budgetCategories.length ? 
+        budgetCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join("") : 
+        `<option disabled selected>No budgets available</option>`;
 
     // Update unified history
     const historyListEl = document.getElementById("history-list");
     historyListEl.innerHTML = history.map(entry => `
         <li>
             ${entry.timestamp} - ${entry.desc} - MVR ${entry.amount.toFixed(2)}
-            <button class="small-btn" onclick="deleteHistory(${entry.id})">🗑</button>
+            <button class="tiny-btn" onclick="deleteHistory(${entry.id})">🗑</button>
         </li>
     `).join("");
 
@@ -129,6 +129,26 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
         updateUI();
     }
 });
+
+// Edit Budget
+function editBudget(id) {
+    const budget = budgetCategories.find(b => b.id === id);
+    if (budget) {
+        document.getElementById("budget-name").value = budget.name;
+        document.getElementById("budget-value").value = budget.value;
+        budgetCategories = budgetCategories.filter(b => b.id !== id);
+        saveData();
+        updateUI();
+    }
+}
+
+// Delete Budget
+function deleteBudget(id) {
+    budgetCategories = budgetCategories.filter(b => b.id !== id);
+    history.push({ id, desc: "Budget Deleted", amount: 0, timestamp: new Date().toLocaleString() });
+    saveData();
+    updateUI();
+}
 
 // Add Expense to Budget
 document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
