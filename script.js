@@ -13,7 +13,7 @@ let budgetCategories = [];
 let editIncomeId = null;
 let editUtilityId = null;
 let editBudgetExpId = null;
-let editBudgetExpOrigCatId = null;  // store original category of budget expense being edited
+let editBudgetExpOrigCatId = null;
 
 // Get references to form elements and lists
 const totalIncomeEl = document.getElementById("total-income");
@@ -33,13 +33,6 @@ const utilityDescInput = document.getElementById("utility-desc");
 const utilitySubmitBtn = document.getElementById("utility-submit-btn");
 const utilityCancelBtn = document.getElementById("utility-cancel-btn");
 
-const budgetForm = document.getElementById("budget-form");
-const budgetNameInput = document.getElementById("budget-name");
-const budgetTypeFixedRadio = document.getElementById("budget-type-fixed");
-const budgetTypePercentRadio = document.getElementById("budget-type-percent");
-const budgetValueInput = document.getElementById("budget-value");
-const budgetSubmitBtn = document.getElementById("budget-submit-btn");
-
 const budgetExpenseForm = document.getElementById("budget-expense-form");
 const expenseCategorySelect = document.getElementById("expense-category");
 const expenseAmountInput = document.getElementById("expense-amount");
@@ -53,162 +46,149 @@ const budgetExpenseListContainer = document.getElementById("budget-expense-list"
 
 // Load data from localStorage
 function loadData() {
-  const incomesData = localStorage.getItem(LS_INCOMES);
-  const utilitiesData = localStorage.getItem(LS_UTILITIES);
-  const budgetsData = localStorage.getItem(LS_BUDGETS);
-  if (incomesData) {
-    try { 
-      incomes = JSON.parse(incomesData) || [];
-      incomes.forEach(inc => {
-        if (!inc.timestamp) {
-          inc.timestamp = new Date().toLocaleString();
-        }
-      });
-    } catch(e) { incomes = []; }
-  }
-  if (utilitiesData) {
-    try { 
-      utilityExpenses = JSON.parse(utilitiesData) || [];
-      utilityExpenses.forEach(exp => {
-        if (!exp.timestamp) {
-          exp.timestamp = new Date().toLocaleString();
-        }
-      });
-    } catch(e) { utilityExpenses = []; }
-  }
-  if (budgetsData) {
-    try { 
-      budgetCategories = JSON.parse(budgetsData) || [];
-      budgetCategories.forEach(cat => {
-        cat.expenses.forEach(exp => {
-          if (!exp.timestamp) {
-            exp.timestamp = new Date().toLocaleString();
-          }
-        });
-      });
-    } catch(e) { budgetCategories = []; }
-  }
+    const incomesData = localStorage.getItem(LS_INCOMES);
+    const utilitiesData = localStorage.getItem(LS_UTILITIES);
+    const budgetsData = localStorage.getItem(LS_BUDGETS);
+
+    incomes = incomesData ? JSON.parse(incomesData) : [];
+    utilityExpenses = utilitiesData ? JSON.parse(utilitiesData) : [];
+    budgetCategories = budgetsData ? JSON.parse(budgetsData) : [];
+
+    // Assign timestamps to old data if missing
+    incomes.forEach(inc => { if (!inc.timestamp) inc.timestamp = new Date().toLocaleString(); });
+    utilityExpenses.forEach(exp => { if (!exp.timestamp) exp.timestamp = new Date().toLocaleString(); });
+    budgetCategories.forEach(cat => {
+        cat.expenses.forEach(exp => { if (!exp.timestamp) exp.timestamp = new Date().toLocaleString(); });
+    });
 }
 
 // Save current data to localStorage
 function saveData() {
-  localStorage.setItem(LS_INCOMES, JSON.stringify(incomes));
-  localStorage.setItem(LS_UTILITIES, JSON.stringify(utilityExpenses));
-  localStorage.setItem(LS_BUDGETS, JSON.stringify(budgetCategories));
+    localStorage.setItem(LS_INCOMES, JSON.stringify(incomes));
+    localStorage.setItem(LS_UTILITIES, JSON.stringify(utilityExpenses));
+    localStorage.setItem(LS_BUDGETS, JSON.stringify(budgetCategories));
 }
 
-// Utility function to generate a unique ID
-function generateId() {
-  return Date.now() + Math.floor(Math.random() * 1000);
+// Calculate totals for income, expenses, and balance
+function recalculateTotals() {
+    const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+    const totalUtility = utilityExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalBudgetExpenses = budgetCategories.reduce((sum, cat) => sum + cat.expenses.reduce((s, exp) => s + exp.amount, 0), 0);
+    
+    const totalExpenses = totalUtility + totalBudgetExpenses;
+    const balance = totalIncome - totalExpenses;
+
+    return { totalIncome, totalUtility, totalBudgetExpenses, totalExpenses, balance };
+}
+
+// Update UI elements
+function updateUI() {
+    const totals = recalculateTotals();
+
+    totalIncomeEl.textContent = totals.totalIncome.toFixed(2);
+    totalExpensesEl.textContent = totals.totalExpenses.toFixed(2);
+    balanceEl.textContent = totals.balance.toFixed(2);
+
+    // Update income list with edit/delete buttons
+    incomeListEl.innerHTML = incomes.map(inc => `
+        <li>
+            ${inc.desc ? inc.desc + " - " : ""}MVR ${inc.amount.toFixed(2)} 
+            (Added: ${inc.timestamp})
+            <button onclick="editIncome(${inc.id})">Edit</button>
+            <button onclick="deleteIncome(${inc.id})">Delete</button>
+        </li>
+    `).join("");
+
+    // Update utility list with edit/delete buttons
+    utilityListEl.innerHTML = utilityExpenses.map(exp => `
+        <li>
+            ${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)} 
+            (Added: ${exp.timestamp})
+            <button onclick="editUtility(${exp.id})">Edit</button>
+            <button onclick="deleteUtility(${exp.id})">Delete</button>
+        </li>
+    `).join("");
+
+    // Update budget expenses with edit/delete buttons
+    budgetExpenseListContainer.innerHTML = budgetCategories.map(cat => `
+        <div>
+            <strong>${cat.name}</strong>
+            <ul>
+                ${cat.expenses.map(exp => `
+                    <li>
+                        ${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)}
+                        (Added: ${exp.timestamp})
+                        <button onclick="editBudgetExpense(${exp.id}, ${cat.id})">Edit</button>
+                        <button onclick="deleteBudgetExpense(${exp.id}, ${cat.id})">Delete</button>
+                    </li>
+                `).join("")}
+            </ul>
+        </div>
+    `).join("");
+
+    saveData();
 }
 
 // Add Income
 incomeForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const amountVal = parseFloat(incomeAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid income amount.");
-    return;
-  }
-  const descVal = incomeDescInput.value.trim();
-  if (editIncomeId === null) {
-    const newIncome = {
-      id: generateId(),
-      amount: amountVal,
-      desc: descVal,
-      timestamp: new Date().toLocaleString()
-    };
-    incomes.push(newIncome);
-  } else {
-    const inc = incomes.find(i => i.id === editIncomeId);
-    if (inc) {
-      inc.amount = amountVal;
-      inc.desc = descVal;
-      inc.timestamp = new Date().toLocaleString();
+    e.preventDefault();
+    const amount = parseFloat(incomeAmountInput.value);
+    if (isNaN(amount) || amount <= 0) return alert("Enter valid amount.");
+
+    const desc = incomeDescInput.value.trim();
+    const timestamp = new Date().toLocaleString();
+
+    if (editIncomeId === null) {
+        incomes.push({ id: Date.now(), amount, desc, timestamp });
+    } else {
+        const income = incomes.find(i => i.id === editIncomeId);
+        income.amount = amount;
+        income.desc = desc;
+        income.timestamp = timestamp;
+        editIncomeId = null;
+        incomeSubmitBtn.textContent = "Add Income";
     }
-    editIncomeId = null;
-    incomeSubmitBtn.textContent = "Add Income";
-    incomeCancelBtn.style.display = "none";
-  }
-  incomeAmountInput.value = "";
-  incomeDescInput.value = "";
-  updateUI();
+    incomeAmountInput.value = "";
+    incomeDescInput.value = "";
+    updateUI();
 });
+
+// Delete Income
+function deleteIncome(id) {
+    incomes = incomes.filter(i => i.id !== id);
+    updateUI();
+}
 
 // Add Utility Expense
 utilityForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const amountVal = parseFloat(utilityAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid expense amount.");
-    return;
-  }
-  const descVal = utilityDescInput.value.trim();
-  if (editUtilityId === null) {
-    const newExp = {
-      id: generateId(),
-      amount: amountVal,
-      desc: descVal,
-      timestamp: new Date().toLocaleString()
-    };
-    utilityExpenses.push(newExp);
-  } else {
-    const exp = utilityExpenses.find(x => x.id === editUtilityId);
-    if (exp) {
-      exp.amount = amountVal;
-      exp.desc = descVal;
-      exp.timestamp = new Date().toLocaleString();
+    e.preventDefault();
+    const amount = parseFloat(utilityAmountInput.value);
+    if (isNaN(amount) || amount <= 0) return alert("Enter valid amount.");
+
+    const desc = utilityDescInput.value.trim();
+    const timestamp = new Date().toLocaleString();
+
+    if (editUtilityId === null) {
+        utilityExpenses.push({ id: Date.now(), amount, desc, timestamp });
+    } else {
+        const expense = utilityExpenses.find(x => x.id === editUtilityId);
+        expense.amount = amount;
+        expense.desc = desc;
+        expense.timestamp = timestamp;
+        editUtilityId = null;
+        utilitySubmitBtn.textContent = "Add Expense";
     }
-    editUtilityId = null;
-    utilitySubmitBtn.textContent = "Add Expense";
-    utilityCancelBtn.style.display = "none";
-  }
-  utilityAmountInput.value = "";
-  utilityDescInput.value = "";
-  updateUI();
+    utilityAmountInput.value = "";
+    utilityDescInput.value = "";
+    updateUI();
 });
 
-// Add Budget Expense
-budgetExpenseForm.addEventListener("submit", function(e) {
-  e.preventDefault();
-  const catId = expenseCategorySelect.value;
-  const amountVal = parseFloat(expenseAmountInput.value);
-  if (isNaN(amountVal) || amountVal <= 0) {
-    alert("Please enter a valid expense amount.");
-    return;
-  }
-  const descVal = expenseDescInput.value.trim();
-  const cat = budgetCategories.find(c => c.id == catId);
-  if (cat) {
-    const newExp = {
-      id: generateId(),
-      amount: amountVal,
-      desc: descVal,
-      timestamp: new Date().toLocaleString()
-    };
-    cat.expenses.push(newExp);
-  }
-  expenseCategorySelect.selectedIndex = 0;
-  expenseAmountInput.value = "";
-  expenseDescInput.value = "";
-  updateUI();
-});
-
-// Update UI to show timestamps
-function updateUI() {
-  incomeListEl.innerHTML = incomes.map(inc => 
-    `<li>${inc.desc ? inc.desc + " - " : ""}MVR ${inc.amount.toFixed(2)} (Added: ${inc.timestamp})</li>`).join("");
-
-  utilityListEl.innerHTML = utilityExpenses.map(exp => 
-    `<li>${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)} (Added: ${exp.timestamp})</li>`).join("");
-
-  budgetExpenseListContainer.innerHTML = budgetCategories.map(cat => 
-    cat.expenses.map(exp => 
-      `<li>${exp.desc ? exp.desc + " - " : ""}MVR ${exp.amount.toFixed(2)} (Added: ${exp.timestamp})</li>`).join("")).join("");
-  
-  saveData();
+// Delete Utility Expense
+function deleteUtility(id) {
+    utilityExpenses = utilityExpenses.filter(x => x.id !== id);
+    updateUI();
 }
 
-// Initialize app
+// Initialize
 loadData();
 updateUI();
