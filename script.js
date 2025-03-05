@@ -24,9 +24,57 @@ function saveData() {
     localStorage.setItem(LS_HISTORY, JSON.stringify(history));
 }
 
+// Recalculate Totals
+function recalculateTotals() {
+    const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+    const totalUtility = utilityExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    let totalBudgetExpenses = 0;
+
+    budgetCategories.forEach(cat => {
+        cat.spent = cat.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        cat.remaining = cat.allocated - cat.spent;
+        totalBudgetExpenses += cat.spent;
+    });
+
+    const totalExpenses = totalUtility + totalBudgetExpenses;
+    const balance = totalIncome - totalExpenses;
+
+    return { totalIncome, totalUtility, totalBudgetExpenses, totalExpenses, balance };
+}
+
 // Update UI
 function updateUI() {
-    // Update History Section with Detailed Breakdown
+    const totals = recalculateTotals();
+
+    document.getElementById("total-income").textContent = totals.totalIncome.toFixed(2);
+    document.getElementById("total-expenses").textContent = totals.totalExpenses.toFixed(2);
+    document.getElementById("balance").textContent = totals.balance.toFixed(2);
+
+    // Update Budget Categories List
+    const budgetsListEl = document.getElementById("budgets-list");
+    budgetsListEl.innerHTML = budgetCategories.length === 0
+        ? "<li class='empty'>No budgets set.</li>"
+        : budgetCategories.map(cat => `
+            <li>
+                <div>${cat.name}</div>
+                <div>Assigned: MVR ${cat.allocated.toFixed(2)}</div>
+                <div>Used: MVR ${cat.spent.toFixed(2)}</div>
+                <div>Remaining: MVR ${cat.remaining.toFixed(2)}</div>
+                <div class="budget-bar-container">
+                    <div class="budget-bar" style="width: ${Math.max((cat.remaining / cat.allocated) * 100, 0)}%"></div>
+                </div>
+                <button class="tiny-btn" onclick="editBudget(${cat.id})">✏</button>
+                <button class="tiny-btn" onclick="deleteBudget(${cat.id})">🗑</button>
+            </li>
+        `).join("");
+
+    // Update Budget Category Selection in Expense Form
+    const expenseCategorySelect = document.getElementById("expense-category");
+    expenseCategorySelect.innerHTML = budgetCategories.length
+        ? budgetCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join("")
+        : `<option disabled selected>No budgets available</option>`;
+
+    // Update Activity History
     const historyListEl = document.getElementById("history-list");
     historyListEl.innerHTML = history.length === 0
         ? "<li class='empty'>No history records yet.</li>"
@@ -41,56 +89,18 @@ function updateUI() {
             </li>
         `).join("");
 
-    // Update budget category selection in expense form
-    const expenseCategorySelect = document.getElementById("expense-category");
-    expenseCategorySelect.innerHTML = budgetCategories.length ? 
-        budgetCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join("") : 
-        `<option disabled selected>No budgets available</option>`;
-
     saveData();
 }
-
-// Add Income
-document.getElementById("income-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const amount = parseFloat(document.getElementById("income-amount").value);
-    const desc = document.getElementById("income-desc").value.trim();
-    
-    if (!isNaN(amount) && amount > 0) {
-        const newIncome = { id: Date.now(), type: "Income", amount, desc, timestamp: new Date().toLocaleString() };
-        incomes.push(newIncome);
-        history.push(newIncome);
-        saveData();
-        updateUI();
-    }
-});
-
-// Add Utility Expense
-document.getElementById("utility-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const amount = parseFloat(document.getElementById("utility-amount").value);
-    const desc = document.getElementById("utility-desc").value.trim();
-
-    if (!isNaN(amount) && amount > 0) {
-        const newExpense = { id: Date.now(), type: "Utility Expense", amount, desc, timestamp: new Date().toLocaleString() };
-        utilityExpenses.push(newExpense);
-        history.push(newExpense);
-        saveData();
-        updateUI();
-    }
-});
 
 // Add Budget Category
 document.getElementById("budget-form").addEventListener("submit", function(e) {
     e.preventDefault();
     const name = document.getElementById("budget-name").value.trim();
-    const isPercent = document.querySelector('input[name="budget-type"]:checked').value === "percent";
     const value = parseFloat(document.getElementById("budget-value").value);
 
     if (!isNaN(value) && value > 0) {
         const newBudget = {
             id: Date.now(),
-            type: "Budget",
             name,
             allocated: value,
             spent: 0,
@@ -105,34 +115,6 @@ document.getElementById("budget-form").addEventListener("submit", function(e) {
         updateUI();
     }
 });
-
-// Add Expense to Budget
-document.getElementById("budget-expense-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const budgetId = document.getElementById("expense-category").value;
-    const amount = parseFloat(document.getElementById("expense-amount").value);
-    const desc = document.getElementById("expense-desc").value.trim();
-
-    if (!isNaN(amount) && amount > 0) {
-        const budget = budgetCategories.find(b => b.id == budgetId);
-        if (budget) {
-            const newExpense = { id: Date.now(), type: "Budget Expense", amount, desc, timestamp: new Date().toLocaleString() };
-            budget.expenses.push(newExpense);
-            budget.spent += amount;
-            budget.remaining -= amount;
-            history.push({ ...newExpense, desc: `Expense in ${budget.name}: ${desc}` });
-            saveData();
-            updateUI();
-        }
-    }
-});
-
-// Delete History Entry
-function deleteHistory(id) {
-    history = history.filter(h => h.id !== id);
-    saveData();
-    updateUI();
-}
 
 // Initialize App
 loadData();
