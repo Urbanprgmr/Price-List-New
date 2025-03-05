@@ -39,45 +39,6 @@ h2 {
   text-shadow: 0px 0px 5px rgba(255, 204, 0, 0.8);
 }
 
-/* Forms & Input Styles */
-.forms-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-.form-col {
-  width: 45%;
-  background: #1e1e1e;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-}
-input, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 5px;
-  border: none;
-}
-input {
-  background: #333;
-  color: #fff;
-  border: 1px solid #555;
-}
-input::placeholder {
-  color: #bbb;
-}
-button {
-  background: #f5a623;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.3s;
-}
-button:hover {
-  background: #f57c00;
-}
-
 /* Budget List */
 #budgets-list {
   list-style: none;
@@ -92,8 +53,6 @@ button:hover {
   flex-direction: column;
   align-items: center;
 }
-
-/* Budget Display */
 #budgets-list li div {
   margin: 5px 0;
   font-size: 14px;
@@ -117,11 +76,10 @@ button:hover {
   background: #f44336;
 }
 
-/* Buttons for Budget Categories */
+/* Smaller Edit/Delete Buttons */
 .tiny-btn {
-  font-size: 10px;
-  padding: 4px;
-  margin-top: 3px;
+  font-size: 8px;
+  padding: 3px;
   cursor: pointer;
   background: #d32f2f;
   color: white;
@@ -149,11 +107,14 @@ button:hover {
   justify-content: space-between;
   align-items: center;
 }
+#history li div {
+  text-align: left;
+}
 #history li button {
   background: #d32f2f;
   color: white;
-  font-size: 10px;
-  padding: 4px;
+  font-size: 8px;
+  padding: 3px;
   border: none;
   border-radius: 3px;
   cursor: pointer;
