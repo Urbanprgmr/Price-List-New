@@ -93,6 +93,12 @@ button:hover {
   align-items: center;
 }
 
+/* Budget Display */
+#budgets-list li div {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
 /* Budget Progress Bar */
 .budget-bar-container {
   width: 100%;
@@ -113,9 +119,9 @@ button:hover {
 
 /* Buttons for Budget Categories */
 .tiny-btn {
-  font-size: 12px;
-  padding: 5px;
-  margin-top: 5px;
+  font-size: 10px;
+  padding: 4px;
+  margin-top: 3px;
   cursor: pointer;
   background: #d32f2f;
   color: white;
@@ -146,8 +152,8 @@ button:hover {
 #history li button {
   background: #d32f2f;
   color: white;
-  font-size: 12px;
-  padding: 5px;
+  font-size: 10px;
+  padding: 4px;
   border: none;
   border-radius: 3px;
   cursor: pointer;
